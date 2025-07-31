@@ -1,0 +1,21 @@
+# Ignorer les fichiers/dossiers Maven (pour esp)
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# Ignorer les fichiers IDE
+.idea/
+*.iml
+
+# Ignorer les fichiers/dossiers Node.js (pour esp_web)
+node_modules/
+yarn.lock
+package-lock.json
+/dist/
+/build/
+esp_web/node_modules/.cache/
+
+# Ignorer les fichiers temporaires
+*.log
+*.tmp
