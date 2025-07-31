@@ -1,0 +1,323 @@
+.gradient-custom-2 {
+  background: #CB0920 !important;
+  color: white !important;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid #CB0920 !important;
+  position: relative;
+  overflow: visible; /* Assure que le contenu ne soit pas coupé */
+  animation: pulse 2s infinite;
+}
+
+.btn.gradient-custom-2 {
+  background: #CB0920 !important;
+  background-color: #CB0920 !important;
+  border-color: #CB0920 !important;
+  color: white !important;
+  width: 100%; /* Assure que le bouton prenne toute la largeur disponible */
+}
+
+.btn.gradient-custom-2:hover {
+  background: #b8081c !important;
+  background-color: #b8081c !important;
+  border-color: #b8081c !important;
+  color: white !important;
+}
+
+.btn.gradient-custom-2:focus,
+.btn.gradient-custom-2:active,
+.btn.gradient-custom-2:visited {
+  background: #CB0920 !important;
+  background-color: #CB0920 !important;
+  border-color: #CB0920 !important;
+  color: white !important;
+  box-shadow: 0 8px 25px rgba(203, 9, 32, 0.6), 0 0 30px rgba(203, 9, 32, 0.3) !important;
+}
+
+.gradient-custom-2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.gradient-custom-2:hover::before {
+  left: 100%;
+}
+
+.gradient-custom-2:hover {
+  background: #b8081c !important;
+  border-color: #b8081c !important;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(203, 9, 32, 0.4), 0 0 20px rgba(203, 9, 32, 0.2) !important;
+  animation: none;
+}
+
+.gradient-custom-2:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 0 5px 15px rgba(203, 9, 32, 0.3) !important;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(203, 9, 32, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(203, 9, 32, 0.5);
+  }
+}
+
+@keyframes buttonGlow {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(203, 9, 32, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 25px rgba(203, 9, 32, 0.6), 0 0 30px rgba(203, 9, 32, 0.3);
+  }
+}
+
+.gradient-custom-2:focus {
+  animation: buttonGlow 0.8s ease-in-out;
+  outline: none;
+}
+
+.gradient-form {
+  background: url('https://i.pinimg.com/1200x/2e/ce/1d/2ece1d95982302ca92e83a2c505d5f94.jpg') no-repeat center center fixed;
+  background-size: cover;
+  height: 100vh;
+  width: 100vw;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  overflow: auto; /* Permet de scroller si nécessaire */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gradient-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.min-vh-100 {
+  height: 100vh !important;
+  width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: auto !important; /* Remplace "hidden" pour éviter de couper le contenu */
+}
+
+.alert {
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 2px solid transparent;
+  font-weight: 500;
+  width: 100%; /* Assure que l'alerte s'affiche pleinement */
+}
+
+.alert-danger {
+  color: white;
+  background: #CB0920;
+  border-color: #CB0920;
+  box-shadow: 0 4px 15px rgba(203, 9, 32, 0.3);
+}
+
+.alert-success {
+  color: #080808;
+  background: #BDBFC0;
+  border-color: #BDBFC0;
+  box-shadow: 0 4px 15px rgba(189, 191, 192, 0.3);
+}
+
+.shadow-5 {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 30px rgba(203, 9, 32, 0.2) !important;
+  border-radius: 1.5rem !important;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  position: relative;
+  overflow: auto; /* Remplace "hidden" pour éviter de couper le contenu */
+  max-width: 90vw;
+  min-height: 650px; /* Hauteur minimale garantie */
+  margin: auto;
+}
+
+.shadow-5::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #CB0920;
+}
+
+.form-select-lg {
+  padding: 1rem 1.25rem;
+  font-size: 1.1rem;
+  border-radius: 0.75rem;
+  border: 2px solid #BDBFC0;
+  background: white;
+  transition: all 0.3s ease;
+  width: 100%; /* Assure que le select s'affiche pleinement */
+}
+
+.form-select-lg:focus {
+  border-color: #CB0920;
+  box-shadow: 0 0 0 0.3rem rgba(203, 9, 32, 0.15);
+  background: white;
+}
+
+.form-outline .form-control {
+  border: 2px solid #BDBFC0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  transition: all 0.3s ease;
+  width: 100%; /* Assure que les inputs s'étendent correctement */
+}
+
+.form-outline .form-control:focus {
+  border-color: #CB0920;
+  box-shadow: 0 0 0 0.3rem rgba(203, 9, 32, 0.15);
+  background: white;
+}
+
+.form-outline .form-label {
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  display: block; /* Assure que le label est toujours visible */
+}
+
+.form-outline .form-control:focus ~ .form-label,
+.form-outline .form-control:not(:placeholder-shown) ~ .form-label {
+  color: #CB0920;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.text-decoration-none {
+  color: #CB0920 !important;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.text-decoration-none:hover {
+  color: #080808 !important;
+  text-shadow: 0 2px 4px rgba(203, 9, 32, 0.2);
+}
+
+h4 {
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+p {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: auto; /* Remplace "hidden" pour permettre le défilement si nécessaire */
+}
+
+.shadow-5 {
+  animation: cardFloat 6s ease-in-out infinite;
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@media (max-width: 768px) {
+  .gradient-form {
+    padding: 0;
+  }
+  
+  .p-5 {
+    padding: 1rem !important; /* Réduit le padding pour les petits écrans */
+  }
+  
+  .shadow-5 {
+    animation: none;
+    max-width: 95vw;
+    min-height: 600px; /* Ajuste la hauteur minimale */
+  }
+}
+
+@media (max-width: 576px) {
+  .p-5 {
+    padding: 0.8rem !important; /* Réduit encore plus pour les très petits écrans */
+  }
+  
+  .shadow-5 {
+    max-width: 98vw;
+    min-height: 550px; /* Ajuste pour éviter le débordement */
+  }
+}
+
+.gradient-form .mb-4 {
+  margin-bottom: 0.75rem !important;
+}
+
+.gradient-form .form-label {
+  margin-bottom: 0.25rem !important;
+}
+
+.gradient-form .form-select,
+.gradient-form .form-control,
+.gradient-form input[type="text"],
+.gradient-form input[type="email"],
+.gradient-form input[type="password"],
+.gradient-form input[type="tel"] {
+  margin-bottom: 0.5rem !important;
+  width: 100% !important; /* Assure que tous les champs s'étendent */
+}
+
+.gradient-form .pt-1.mb-4 {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+  padding-top: 0.25rem !important;
+}
+
+.gradient-form .card .p-5,
+.gradient-form .MDBCardBody {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+@media (max-width: 700px) {
+  .gradient-form .row,
+  .gradient-form .MDBRow {
+    flex-direction: column !important;
+  }
+  .gradient-form .col,
+  .gradient-form .MDBCol {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+  .gradient-form .card .p-5,
+  .gradient-form .MDBCardBody {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
