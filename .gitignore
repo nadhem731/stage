@@ -1,8 +1,8 @@
-# Backend (Java / Spring Boot)
+# Backend (Spring Boot)
 esp/target/
 *.log
 
-# Frontend (Node / Angular / React)
+# Frontend ( React)
 esp_web/node_modules/
 esp_web/.angular/
 esp_web/.cache/
@@ -14,3 +14,6 @@ esp_web/dist/
 *.iml
 .idea/
 .vscode/
+
+# YoYo AI version control directory
+.yoyo/

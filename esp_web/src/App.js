@@ -10,6 +10,7 @@ import Salle from './components/admin/salle';
 import Planning from './components/admin/planning';
 import Sidebar from './components/Sidebar';
 import ClasseTable from './components/admin/ClasseTable';
+import Affectation from './components/admin/affectation';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -53,6 +54,7 @@ function AppContent() {
           <Route path="/admin/salle" element={<Salle />} />
           <Route path="/admin/classe" element={<ClasseTable />} />
           <Route path="/admin/planning" element={<Planning />} />
+          <Route path="/admin/affectation" element={<Affectation />} />
         </Routes>
       </div>
     </Router>

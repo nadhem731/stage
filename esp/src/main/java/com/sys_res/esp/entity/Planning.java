@@ -2,6 +2,7 @@ package com.sys_res.esp.entity;
 
 import java.sql.Date;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,15 +19,19 @@ import lombok.Data;
 public class Planning {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_planning")
     private Long idPlanning;
 
     @NotNull
+    @Column(name = "date_debut")
     private Date dateDebut;
 
     @NotNull
+    @Column(name = "date_fin")
     private Date dateFin;
 
     @NotNull
+    @Column(name = "statut_type_status")
     private String statutTypeStatus;
 
     @ManyToOne(optional = false)
@@ -40,6 +45,9 @@ public class Planning {
     @ManyToOne
     @JoinColumn(name = "id_user", referencedColumnName = "id_user", nullable = false)
     private Users user;
+
+    @Column(name = "type_planning")
+    private String typePlanning;
 
     // Getters and Setters
     public Long getIdPlanning() {
@@ -97,4 +105,4 @@ public class Planning {
     public void setUser(Users user) {
         this.user = user;
     }
-} 
+}

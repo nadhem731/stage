@@ -92,7 +92,8 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
         // Le mot de passe est toujours égal au cin, encodé
         user.setPassword(passwordEncoder.encode(signupRequest.getCin()));
         user.setCin(signupRequest.getCin());
-        user.setRole(role); // Utiliser setRole au lieu de setRoleTypeRole
+        user.setMatiere(signupRequest.getMatiere());
+        user.setRole(role);
 
         logger.info("Saving user to database");
         try {

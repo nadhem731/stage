@@ -56,15 +56,12 @@ public class JwtUtil {
         return claims.get("role", String.class);
     }
 
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+    public boolean validateToken(String token, UserDetails userDetails) {
+        final String identifiant = getIdentifiantFromToken(token);
+        return (identifiant.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    private boolean isTokenExpired(String token) {
+        return getAllClaimsFromToken(token).getExpiration().before(new Date());
     }
 }

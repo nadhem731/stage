@@ -3,6 +3,7 @@ import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from 
 import Sidebar from '../Sidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
+import { ROLES } from '../../config/roles';
 import '../../style/etudient.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
@@ -34,10 +35,8 @@ const Etudient = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get('/api/users');
-      // On ne garde que les utilisateurs dont le rôle est 'Etudiant'
-      const etudiants = res.data.filter(u => u.role && (u.role.typeRole === 'Etudiant' || u.role === 'Etudiant'));
-      setStudents(etudiants);
+      const res = await axios.get('/api/users', { params: { role: ROLES.ETUDIANT } });
+      setStudents(res.data);
     } catch (err) {
       setError('Erreur lors du chargement des étudiants');
     } finally {
@@ -70,7 +69,7 @@ const Etudient = () => {
     try {
       await axios.post('/api/auth/signup', {
         ...formData,
-        roleTypeRole: 'Etudiant',
+        roleTypeRole: ROLES.ETUDIANT,
         password: formData.cin, // mot de passe = cin
       });
       setFormSuccess('Étudiant ajouté avec succès !');

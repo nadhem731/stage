@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from '../Sidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
+import { ROLES } from '../../config/roles';
 import '../../style/etudient.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
@@ -33,10 +34,8 @@ const Enseignant = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get('/api/users');
-      // On ne garde que les utilisateurs dont le rôle est 'Enseignant'
-      const enseignants = res.data.filter(u => u.role && (u.role.typeRole === 'Enseignant' || u.role === 'Enseignant'));
-      setTeachers(enseignants);
+      const res = await axios.get('/api/users', { params: { role: ROLES.ENSEIGNANT } });
+      setTeachers(res.data);
     } catch (err) {
       setError('Erreur lors du chargement des enseignants');
     } finally {
@@ -69,7 +68,7 @@ const Enseignant = () => {
     try {
       await axios.post('/api/auth/signup', {
         ...formData,
-        roleTypeRole: 'Enseignant',
+        roleTypeRole: ROLES.ENSEIGNANT,
         password: formData.cin, // mot de passe = cin
       });
       setFormSuccess('Enseignant ajouté avec succès !');

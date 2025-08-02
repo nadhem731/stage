@@ -23,4 +23,6 @@ public class SignupRequest {
     private String identifiant;
     @NotBlank
     private String cin;
+
+    private String matiere;
 }
