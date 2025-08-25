@@ -7,6 +7,7 @@ function Login() {
   const [identifiant, setIdentifiant] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
   const [cardVisible, setCardVisible] = useState(false);
@@ -79,12 +80,25 @@ function Login() {
               style={{ paddingLeft: 44, height: 48, fontSize: 17, borderRadius: 10, border: '2px solid #e0e0e0', transition: 'all 0.3s' }}
               placeholder="Mot de passe (CIN)"
               id="formPassword"
-              type="password"
+              type={passwordVisible ? 'text' : 'password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
               autoComplete="current-password"
             />
+            <span
+              onClick={() => setPasswordVisible(!passwordVisible)}
+              style={{
+                position: 'absolute',
+                right: 18,
+                top: 14,
+                cursor: 'pointer',
+                color: '#CB0920',
+                fontSize: 20
+              }}
+            >
+              <i className={`fas ${passwordVisible ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </span>
           </div>
           <div className="mb-3 text-start" style={{ color: '#CB0920', fontSize: '0.98rem', fontWeight: 500, marginLeft: 2 }}>
           </div>

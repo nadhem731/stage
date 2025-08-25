@@ -4,6 +4,7 @@ import java.security.Key;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
@@ -25,9 +26,11 @@ public class JwtUtil {
     }
 
     public String generateToken(String identifiant, String role) {
+        // Assurez-vous que le rôle est préfixé par "ROLE_" et en majuscules pour Spring Security
+        String formattedRole = "ROLE_" + role.toUpperCase();
         return Jwts.builder()
                 .setSubject(identifiant)
-                .claim("role", role)
+                .claim("role", formattedRole) // Stocke le rôle formaté
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)

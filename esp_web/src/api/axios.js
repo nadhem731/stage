@@ -9,11 +9,23 @@ const instance = axios.create({
   withCredentials: false
 });
 
+// Liste des chemins qui ne nécessitent pas d'authentification
+const publicPaths = [
+  '/api/auth/signup',
+  '/api/auth/login'
+  // '/api/plannings/generate' a été retiré car il nécessite une authentification
+];
+
 instance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Vérifier si le chemin de la requête est un chemin public
+    const isPublicPath = publicPaths.some(path => config.url.includes(path));
+
+    if (!isPublicPath) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },

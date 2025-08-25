@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from '../../api/axios';
+import '../../style/dashboard.css';
 import '../../style/etudient.css';
+import '../../style/table.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
 import Sidebar from '../Sidebar';
@@ -24,6 +26,11 @@ const ClasseTable = () => {
   const rowsPerPage = 8;
 
   const [search, setSearch] = useState('');
+
+  // Pour la popup de détails
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedClasseDetails, setSelectedClasseDetails] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchClasses = async () => {
     try {
@@ -86,6 +93,50 @@ const ClasseTable = () => {
     }
   };
 
+  // Fonction pour récupérer les détails d'une classe (enseignants et étudiants)
+  const handleDetailClick = async (classe) => {
+    setDetailLoading(true);
+    setShowDetailModal(true);
+    setSelectedClasseDetails({ ...classe, enseignants: [], etudiants: [] });
+
+    try {
+      // Récupérer toutes les affectations pour cette classe
+      const affectationsRes = await axios.get(`/api/affectations/classe/${classe.idClasse}`);
+      const affectations = affectationsRes.data || [];
+
+      // Séparer enseignants et étudiants selon leur rôle
+      const enseignants = affectations.filter(affectation => 
+        affectation.user && affectation.user.role && 
+        (affectation.user.role.typeRole === 'Enseignant' || 
+         affectation.user.role.typeRole === 'enseignant' ||
+         affectation.user.role.typeRole === 'ENSEIGNANT')
+      );
+
+      const etudiants = affectations.filter(affectation => 
+        affectation.user && affectation.user.role && 
+        (affectation.user.role.typeRole === 'Etudiant' || 
+         affectation.user.role.typeRole === 'etudiant' ||
+         affectation.user.role.typeRole === 'ETUDIANT')
+      );
+
+      setSelectedClasseDetails({
+        ...classe,
+        enseignants: enseignants,
+        etudiants: etudiants
+      });
+    } catch (err) {
+      console.error('Erreur lors du chargement des détails:', err);
+      setSelectedClasseDetails({
+        ...classe,
+        enseignants: [],
+        etudiants: [],
+        error: 'Erreur lors du chargement des détails'
+      });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   // Génération automatique de classes (ex: 1A1, 1A2, 1A3)
   const handleAutoGenerate = async (e) => {
     e.preventDefault();
@@ -143,7 +194,14 @@ const ClasseTable = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar activeMenu="Classe" setActiveMenu={() => {}} />
-      <main style={{ flex: 1, padding: '2rem', marginLeft: 260 }}>
+      <main style={{ 
+        flex: 1, 
+        padding: '2rem', 
+        marginLeft: '280px',
+        minWidth: 0,
+        position: 'relative',
+        zIndex: 1
+      }}>
         <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>Gestion des Classes</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -223,15 +281,16 @@ const ClasseTable = () => {
             <table className="table-dashboard">
               <thead>
                 <tr>
-                  <th>NOM</th>
-                  <th>Action</th>
+                  <th>NOM</th><th>Effectif</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedClasses.map((classe) => (
                   <tr key={classe.idClasse}>
                     <td>{classe.nomClasse}</td>
+                    <td>{classe.effectif || 0}</td>
                     <td>
+                      <button style={{ background: '#007bff', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }} onClick={() => handleDetailClick(classe)}>Détail</button>
                       <button style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }} onClick={() => handleEditClick(classe)}>Modifier</button>
                       <button style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }} onClick={() => handleDelete(classe.idClasse)}>Supprimer</button>
                     </td>
@@ -268,9 +327,172 @@ const ClasseTable = () => {
 
           </div>
         )}
+
+        {/* Modal de détails de la classe */}
+        {showDetailModal && selectedClasseDetails && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '800px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                borderBottom: '2px solid #f0f0f0',
+                paddingBottom: '1rem'
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  color: '#CB0920',
+                  fontSize: '1.5rem',
+                  fontWeight: '700'
+                }}>
+                  Détails de la classe {selectedClasseDetails.nomClasse}
+                </h3>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: '#666',
+                    padding: '5px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {detailLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <span style={{ color: '#CB0920', fontWeight: 600 }}>Chargement des détails...</span>
+                </div>
+              ) : selectedClasseDetails.error ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#CB0920' }}>
+                  {selectedClasseDetails.error}
+                </div>
+              ) : (
+                <div>
+                  {/* Informations générales */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    <h4 style={{ color: '#333', marginBottom: '0.5rem' }}>Informations générales</h4>
+                    <div className="stat-card" style={{ background: 'var(--red-main)', color: 'var(--white-main)', padding: '1.5rem', borderRadius: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--gray-light)' }}>
+                      <div className="stat-content">
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}><strong>Nom de la classe:</strong> {selectedClasseDetails.nomClasse}</p>
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}><strong>Effectif:</strong> {selectedClasseDetails.effectif || 0} étudiants</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Liste des enseignants */}
+                  <div style={{ marginBottom: '2rem' }}>
+                    <h4 style={{ color: '#333', marginBottom: '1rem' }}>
+                      Enseignants affectés ({selectedClasseDetails.enseignants.length})
+                    </h4>
+                    {selectedClasseDetails.enseignants.length > 0 ? (
+                      <div style={{ background: 'var(--white-main)', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: 'var(--shadow)', border: '1px solid var(--gray-light)' }}>
+                        <table className="table-dashboard">
+                          <thead>
+                            <tr>
+                              <th>Nom</th>
+                              <th>Prénom</th>
+                              <th>Matière</th>
+                              <th>Email</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedClasseDetails.enseignants.map((affectation, index) => (
+                              <tr key={index}>
+                                <td>{affectation.user?.nom || 'N/A'}</td>
+                                <td>{affectation.user?.prenom || 'N/A'}</td>
+                                <td>{affectation.user?.matiere || 'N/A'}</td>
+                                <td>{affectation.user?.email || 'N/A'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        background: '#fff3cd', 
+                        color: '#856404', 
+                        padding: '1rem', 
+                        borderRadius: '8px',
+                        border: '1px solid #ffeaa7'
+                      }}>
+                        Aucun enseignant affecté à cette classe
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Liste des étudiants */}
+                  <div>
+                    <h4 style={{ color: '#333', marginBottom: '1rem' }}>
+                      Étudiants inscrits ({selectedClasseDetails.etudiants.length})
+                    </h4>
+                    {selectedClasseDetails.etudiants.length > 0 ? (
+                      <div style={{ background: 'var(--white-main)', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: 'var(--shadow)', border: '1px solid var(--gray-light)' }}>
+                        <table className="table-dashboard">
+                          <thead>
+                            <tr>
+                              <th>Nom</th>
+                              <th>Prénom</th>
+                              <th>Email</th>
+                              <th>Téléphone</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedClasseDetails.etudiants.map((affectation, index) => (
+                              <tr key={index}>
+                                <td>{affectation.user?.nom || 'N/A'}</td>
+                                <td>{affectation.user?.prenom || 'N/A'}</td>
+                                <td>{affectation.user?.email || 'N/A'}</td>
+                                <td>{affectation.user?.tel || 'N/A'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        background: '#fff3cd', 
+                        color: '#856404', 
+                        padding: '1rem', 
+                        borderRadius: '8px',
+                        border: '1px solid #ffeaa7'
+                      }}>
+                        Aucun étudiant inscrit dans cette classe
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
 };
 
-export default ClasseTable; 
+export default ClasseTable;

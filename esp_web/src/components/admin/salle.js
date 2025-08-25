@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../Sidebar';
 import axios from '../../api/axios';
-import '../../style/etudient.css'; // pour réutiliser le style de table
+import '../../style/etudient.css';
+import '../../style/table.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
 import ClasseTable from './ClasseTable';
@@ -12,12 +13,16 @@ const Salle = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showBatchForm, setShowBatchForm] = useState(true); // Default to batch form
   const [formData, setFormData] = useState({
     numSalle: '',
     capacite: '',
     bloc: '',
     disponibilite: true,
-    typeSalle: { typeSalle: '' }
+    typeSalle: { typeSalle: '' },
+    // New fields for batch creation
+    blocName: '',
+    numberOfRooms: ''
   });
   const [formError, setFormError] = useState(null);
   const [formSuccess, setFormSuccess] = useState(null);
@@ -67,8 +72,18 @@ const Salle = () => {
 
   const handleAddClick = () => {
     setShowForm(true);
+    setShowBatchForm(true); // Default to batch form
     setFormError(null);
     setFormSuccess(null);
+    setFormData({ // Reset form data
+      numSalle: '',
+      capacite: '',
+      bloc: '',
+      disponibilite: true,
+      typeSalle: { typeSalle: '' },
+      blocName: '',
+      numberOfRooms: ''
+    });
   };
 
   const handleFormChange = (e) => {
@@ -77,7 +92,10 @@ const Salle = () => {
       setFormData({ ...formData, typeSalle: { typeSalle: value } });
     } else if (name === 'disponibilite') {
       setFormData({ ...formData, disponibilite: value === 'true' });
-    } else {
+    } else if (name === 'numberOfRooms') {
+      setFormData({ ...formData, [name]: parseInt(value) || '' }); // Parse to integer
+    }
+    else {
       setFormData({ ...formData, [name]: value });
     }
   };
@@ -86,23 +104,54 @@ const Salle = () => {
     e.preventDefault();
     setFormError(null);
     setFormSuccess(null);
-    if (!formData.numSalle || !formData.capacite || !formData.typeSalle.typeSalle || !formData.bloc) {
-      setFormError('Tous les champs sont obligatoires');
-      return;
-    }
-    try {
-      await axios.post('/api/salles', formData);
-      setFormSuccess('Salle ajoutée avec succès !');
-      setShowForm(false);
-      setFormData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' } });
-      fetchSalles();
-    } catch (err) {
-      setFormError(
-        err.response?.data?.message ||
-        err.response?.data ||
-        err.message ||
-        'Erreur lors de l\'ajout'
-      );
+
+    if (showBatchForm) {
+      // Batch creation logic
+      if (!formData.blocName || !formData.numberOfRooms || !formData.capacite || !formData.typeSalle.typeSalle) {
+        setFormError('Tous les champs (Nom du bloc, Nombre de salles, Capacité, Type de salle) sont obligatoires pour la création par lot.');
+        return;
+      }
+      try {
+        const batchData = {
+          blocName: formData.blocName,
+          numberOfRooms: formData.numberOfRooms,
+          capacite: formData.capacite,
+          disponibilite: formData.disponibilite,
+          typeSalleId: formData.typeSalle.typeSalle
+        };
+        await axios.post('/api/salles/batch', batchData);
+        setFormSuccess('Salles ajoutées avec succès !');
+        setShowForm(false);
+        setFormData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' }, blocName: '', numberOfRooms: '' });
+        fetchSalles();
+      } catch (err) {
+        setFormError(
+          err.response?.data?.message ||
+          err.response?.data ||
+          err.message ||
+          'Erreur lors de l\'ajout par lot'
+        );
+      }
+    } else {
+      // Single room creation logic
+      if (!formData.numSalle || !formData.capacite || !formData.typeSalle.typeSalle || !formData.bloc) {
+        setFormError('Tous les champs sont obligatoires');
+        return;
+      }
+      try {
+        await axios.post('/api/salles', formData);
+        setFormSuccess('Salle ajoutée avec succès !');
+        setShowForm(false);
+        setFormData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' }, blocName: '', numberOfRooms: '' });
+        fetchSalles();
+      } catch (err) {
+        setFormError(
+          err.response?.data?.message ||
+          err.response?.data ||
+          err.message ||
+          'Erreur lors de l\'ajout'
+        );
+      }
     }
   };
 
@@ -164,7 +213,16 @@ const Salle = () => {
       alert('Erreur lors de la suppression');
     }
   };
-
+  const handleDisponibiliteChange = async (idSalle, newDisponibilite) => {
+    try {
+      await axios.put(`/api/salles/${idSalle}`, { disponibilite: newDisponibilite });
+      fetchSalles(); // Refresh the list after update
+    } catch (err) {
+      alert('Erreur lors de la mise à jour de la disponibilité.');
+      console.error(err);
+    }
+  };
+ 
   // Recherche et pagination
   const filteredSalles = salles.filter(salle =>
     (salle.numSalle && salle.numSalle.toLowerCase().includes(search.toLowerCase())) ||
@@ -206,7 +264,14 @@ const Salle = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar activeMenu="Salles" setActiveMenu={() => {}} />
-      <main style={{ flex: 1, padding: '2rem', marginLeft: 260 }}>
+      <main style={{ 
+        flex: 1, 
+        padding: '2rem', 
+        marginLeft: '280px',
+        minWidth: 0,
+        position: 'relative',
+        zIndex: 1
+      }}>
         <div style={{ maxWidth: 1100, margin: 'auto' }}>
           <div className="dashboard-content" style={{ position: 'relative' }}>
             <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -264,11 +329,40 @@ const Salle = () => {
                 marginTop: 16
               }}>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <input name="numSalle" value={formData.numSalle} onChange={handleFormChange} placeholder="Numéro de salle" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
+                  {/* Toggle button for single/batch form */}
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchForm(!showBatchForm)}
+                    style={{
+                      background: '#f0f0f0',
+                      color: '#333',
+                      border: '1px solid #ddd',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginBottom: 12,
+                      width: '100%'
+                    }}
+                  >
+                    {showBatchForm ? 'Ajouter une seule salle' : 'Ajouter plusieurs salles'}
+                  </button>
+
+                  {!showBatchForm && (
+                    <>
+                      <input name="numSalle" value={formData.numSalle} onChange={handleFormChange} placeholder="Numéro de salle" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
+                      <input name="bloc" value={formData.bloc} onChange={handleFormChange} placeholder="Bloc" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
+                    </>
+                  )}
+                  {showBatchForm && (
+                    <>
+                      <input name="blocName" value={formData.blocName} onChange={handleFormChange} placeholder="Nom du bloc (ex: A)" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
+                      <input name="numberOfRooms" value={formData.numberOfRooms} onChange={handleFormChange} placeholder="Nombre de salles (ex: 5)" type="number" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
+                    </>
+                  )}
                   <input name="capacite" value={formData.capacite} onChange={handleFormChange} placeholder="Capacité" type="number" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-                  <input name="bloc" value={formData.bloc} onChange={handleFormChange} placeholder="Bloc" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
                   <select name="typeSalle" value={formData.typeSalle.typeSalle} onChange={handleFormChange} style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} required>
                     <option value="">Sélectionner un type</option>
                     {typeSallesDisponibles.map((ts) => (
@@ -284,7 +378,7 @@ const Salle = () => {
                 {formSuccess && <div style={{ color: 'green', marginTop: 10, fontWeight: 500 }}>{formSuccess}</div>}
                 <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                   <button type="button" onClick={() => setShowForm(false)} style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-                  <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}>Ajouter</button>
+                  <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}>{showBatchForm ? 'Ajouter les salles' : 'Ajouter'}</button>
                 </div>
               </form>
             )}
@@ -354,7 +448,24 @@ const Salle = () => {
                         <td>{salle.capacite}</td>
                         <td>{salle.bloc}</td>
                         <td>{typeof salle.typeSalle === 'string' ? salle.typeSalle : salle.typeSalle?.typeSalle}</td>
-                        <td>{salle.disponibilite ? 'Oui' : 'Non'}</td>
+                        <td>
+                          <select
+                            value={salle.disponibilite}
+                            onChange={(e) => handleDisponibiliteChange(salle.idSalle, e.target.value === 'true')}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 6,
+                              border: '1px solid #ddd',
+                              minWidth: 90,
+                              background: salle.disponibilite ? '#e8f5e9' : '#ffebee',
+                              color: salle.disponibilite ? '#2e7d32' : '#c62828',
+                              fontWeight: 600
+                            }}
+                          >
+                            <option value={true}>Oui</option>
+                            <option value={false}>Non</option>
+                          </select>
+                        </td>
                         <td>
                           <button
                             style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}

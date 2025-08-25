@@ -9,6 +9,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import java.util.Map;
 
 @Data
 @Entity
@@ -44,8 +47,16 @@ public class Users {
     @JoinColumn(name = "role_type_role", referencedColumnName = "type_role")
     private Role role;
 
+    @ManyToOne
+    @JoinColumn(name = "id_classe", referencedColumnName = "id_classe")
+    private Classe classe;
+
     @Column(name = "password")
     private String password;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "disponibilite", columnDefinition = "jsonb")
+    private Map<String, Object> disponibilite;
 
     public void setIdUser(Long idUser) {
         this.idUser = idUser;

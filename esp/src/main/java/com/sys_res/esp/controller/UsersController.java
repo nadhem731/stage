@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import com.sys_res.esp.entity.Users;
 import com.sys_res.esp.service.UsersService;
 
@@ -73,5 +74,59 @@ public class UsersController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         usersService.deleteById(id);
+    }
+
+    @PutMapping("/{id}/disponibilite")
+    public Users updateDisponibilite(@PathVariable Long id, @RequestBody Map<String, Object> disponibilite) {
+        Users existing = usersService.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        existing.setDisponibilite(disponibilite);
+        return usersService.save(existing);
+    }
+
+    @GetMapping("/etudiants/classe/{classeId}")
+    public List<Users> getEtudiantsByClasse(@PathVariable Integer classeId) {
+        return usersService.getEtudiantsByClasse(classeId);
+    }
+
+    @GetMapping("/enseignants")
+    public List<Users> getEnseignants() {
+        // Essayer différentes variantes du rôle enseignant
+        List<Users> enseignants = usersService.findByRole("enseignant");
+        if (enseignants.isEmpty()) {
+            System.out.println("DEBUG: Aucun enseignant trouvé avec 'enseignant', essai avec 'Enseignant'");
+            enseignants = usersService.findByRole("Enseignant");
+        }
+        if (enseignants.isEmpty()) {
+            System.out.println("DEBUG: Aucun enseignant trouvé avec 'Enseignant', essai avec 'ENSEIGNANT'");
+            enseignants = usersService.findByRole("ENSEIGNANT");
+        }
+        
+        System.out.println("DEBUG: Récupération de " + enseignants.size() + " enseignants");
+        for (Users enseignant : enseignants) {
+            System.out.println("DEBUG: Enseignant - ID: " + enseignant.getIdUser() + 
+                             ", Nom: " + enseignant.getNom() + 
+                             ", Prénom: " + enseignant.getPrenom() + 
+                             ", Matière: " + enseignant.getMatiere() +
+                             ", Rôle: " + (enseignant.getRole() != null ? enseignant.getRole().getTypeRole() : "null"));
+        }
+        return enseignants;
+    }
+
+    @GetMapping("/etudiants")
+    public List<Users> getEtudiants() {
+        // Essayer différentes variantes du rôle étudiant
+        List<Users> etudiants = usersService.findByRole("etudiant");
+        if (etudiants.isEmpty()) {
+            System.out.println("DEBUG: Aucun étudiant trouvé avec 'etudiant', essai avec 'Etudiant'");
+            etudiants = usersService.findByRole("Etudiant");
+        }
+        if (etudiants.isEmpty()) {
+            System.out.println("DEBUG: Aucun étudiant trouvé avec 'Etudiant', essai avec 'ETUDIANT'");
+            etudiants = usersService.findByRole("ETUDIANT");
+        }
+        
+        System.out.println("DEBUG: Récupération de " + etudiants.size() + " étudiants");
+        return etudiants;
     }
 }

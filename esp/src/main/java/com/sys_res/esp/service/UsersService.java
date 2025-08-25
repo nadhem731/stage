@@ -32,12 +32,15 @@ public class UsersService {
     }
 
      public List<Users> findByRole(String roleType) {
+        System.out.println("DEBUG: Recherche d'utilisateurs avec le rôle: " + roleType);
         Optional<Role> role = roleRepository.findById(roleType);
         if (role.isEmpty()) {
-            // Handle the case where the role doesn't exist
-            return List.of(); // Or throw an exception
+            System.out.println("DEBUG: Rôle '" + roleType + "' non trouvé dans la base de données");
+            return List.of();
         }
-        return usersRepository.findByRole(role.get());
+        List<Users> users = usersRepository.findByRole(role.get());
+        System.out.println("DEBUG: Trouvé " + users.size() + " utilisateurs avec le rôle " + roleType);
+        return users;
     }
 
     public Users save(Users user) {
@@ -54,5 +57,34 @@ public class UsersService {
 
     public Optional<Users> findByIdentifiant(String identifiant) {
         return usersRepository.findByIdentifiant(identifiant);
+    }
+
+    public List<Users> getEtudiantsByClasse(Integer classeId) {
+        // Essayer différentes variantes du rôle étudiant
+        List<Users> etudiants = findByRole("Etudiant");
+        if (etudiants.isEmpty()) {
+            System.out.println("DEBUG: Aucun étudiant trouvé avec 'Etudiant', essai avec 'etudiant'");
+            etudiants = findByRole("etudiant");
+        }
+        if (etudiants.isEmpty()) {
+            System.out.println("DEBUG: Aucun étudiant trouvé avec 'etudiant', essai avec 'ETUDIANT'");
+            etudiants = findByRole("ETUDIANT");
+        }
+        
+        System.out.println("DEBUG: Trouvé " + etudiants.size() + " étudiants au total");
+        
+        // Pour l'instant, simulation d'association classe-étudiant
+        // Dans une vraie implémentation, il faudrait une table de liaison
+        List<Users> etudiantsClasse = etudiants.stream()
+            .filter(etudiant -> {
+                // Simulation: associer les étudiants aux classes selon un modulo
+                long studentId = etudiant.getIdUser();
+                return (studentId % 5) == (classeId % 5);
+            })
+            .limit(8) // Limiter à 8 étudiants par classe
+            .collect(java.util.stream.Collectors.toList());
+            
+        System.out.println("DEBUG: Récupération de " + etudiantsClasse.size() + " étudiants pour la classe ID: " + classeId);
+        return etudiantsClasse;
     }
 }

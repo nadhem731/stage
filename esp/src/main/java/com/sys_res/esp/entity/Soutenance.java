@@ -1,12 +1,15 @@
 package com.sys_res.esp.entity;
 
 import java.sql.Date;
+import java.util.List;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
@@ -29,6 +32,10 @@ public class Soutenance {
     @NotNull
     private String duree;
 
+    private String statutValidation = "en_cours"; // 'en_cours', 'valide'
+
+    private String jour; // Jour de la semaine (Lundi, Mardi, etc.)
+
     @ManyToOne
     @JoinColumn(name = "id_salle", referencedColumnName = "id_salle", nullable = false)
     private Salle salle;
@@ -36,6 +43,8 @@ public class Soutenance {
     @ManyToOne
     @JoinColumn(name = "id_user", referencedColumnName = "id_user", nullable = false)
     private Users user;
+
+    
 
     // Getters and Setters
     public Long getIdSoutenance() {
@@ -84,5 +93,22 @@ public class Soutenance {
 
     public void setUser(Users user) {
         this.user = user;
+    }
+
+
+    public String getStatutValidation() {
+        return statutValidation;
+    }
+
+    public void setStatutValidation(String statutValidation) {
+        this.statutValidation = statutValidation;
+    }
+
+    public String getJour() {
+        return jour;
+    }
+
+    public void setJour(String jour) {
+        this.jour = jour;
     }
 } 

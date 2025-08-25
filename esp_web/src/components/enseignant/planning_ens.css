@@ -1,0 +1,221 @@
+/* Styles pour l'emploi du temps */
+.timetable-container {
+    width: 100%;
+    margin: 1rem 0;
+    position: relative;
+    z-index: 1;
+}
+
+.timetable-grid {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.timetable-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.timetable-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.timetable-content {
+    padding: 0;
+}
+
+.timetable-table {
+    width: 100%;
+    display: table;
+}
+
+.timetable-row {
+    display: table-row;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.timetable-row:last-child {
+    border-bottom: none;
+}
+
+.header-row {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+}
+
+.course-row:hover {
+    background: #f0f9ff;
+    transition: background-color 0.2s ease;
+}
+
+.time-cell,
+.day-cell,
+.class-cell,
+.room-cell,
+.subject-cell {
+    display: table-cell;
+    padding: 1rem;
+    vertical-align: middle;
+    border-right: 1px solid #e5e7eb;
+}
+
+.time-cell:last-child,
+.day-cell:last-child,
+.class-cell:last-child,
+.room-cell:last-child,
+.subject-cell:last-child {
+    border-right: none;
+}
+
+/* Largeurs des colonnes */
+.time-cell {
+    width: 20%;
+    min-width: 140px;
+}
+
+.day-cell {
+    width: 25%;
+    min-width: 180px;
+}
+
+.class-cell {
+    width: 20%;
+    min-width: 140px;
+}
+
+.room-cell {
+    width: 20%;
+    min-width: 140px;
+}
+
+.subject-cell {
+    width: 15%;
+    min-width: 120px;
+}
+
+/* Styles pour les en-têtes */
+.header {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* Styles pour le contenu des cellules */
+.time-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.start-time,
+.end-time {
+    font-size: 0.9rem;
+}
+
+.separator {
+    color: #6b7280;
+    font-weight: 400;
+}
+
+.date-info {
+    text-align: center;
+}
+
+.day-name {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.class-info,
+.room-info,
+.subject-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.class-icon,
+.room-icon,
+.subject-icon {
+    font-size: 1.1rem;
+}
+
+.class-name,
+.room-name,
+.subject-name {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+/* Couleurs spécifiques */
+.class-info {
+    color: #059669;
+}
+
+.room-info {
+    color: #dc2626;
+}
+
+.subject-info {
+    color: #7c3aed;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+    .timetable-table {
+        font-size: 0.85rem;
+    }
+    
+    .time-cell,
+    .day-cell,
+    .class-cell,
+    .room-cell,
+    .subject-cell {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .timetable-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .timetable-row {
+        display: table-row;
+        min-width: 800px;
+    }
+    
+    .timetable-header h3 {
+        font-size: 1.2rem;
+    }
+}
+
+/* Animation pour les lignes */
+.course-row {
+    transition: all 0.2s ease;
+}
+
+.course-row:hover .time-slot {
+    transform: scale(1.05);
+}
+
+.course-row:hover .class-name,
+.course-row:hover .room-name,
+.course-row:hover .subject-name {
+    font-weight: 600;
+}

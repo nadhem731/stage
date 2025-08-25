@@ -11,6 +11,8 @@ import Planning from './components/admin/planning';
 import Sidebar from './components/Sidebar';
 import ClasseTable from './components/admin/ClasseTable';
 import Affectation from './components/admin/affectation';
+import Disponibilite from './components/enseignant/disponibilite';
+import PlanningEnseignant from './components/enseignant/planning_ens';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -49,12 +51,14 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="/admin/enseignant" element={<Enseignant />} />
-          <Route path="/admin/etudient" element={<Etudient />} />
-          <Route path="/admin/salle" element={<Salle />} />
-          <Route path="/admin/classe" element={<ClasseTable />} />
-          <Route path="/admin/planning" element={<Planning />} />
-          <Route path="/admin/affectation" element={<Affectation />} />
+          <Route path="/admin/enseignant" element={<ProtectedRoute><Enseignant /></ProtectedRoute>} />
+          <Route path="/admin/etudient" element={<ProtectedRoute><Etudient /></ProtectedRoute>} />
+          <Route path="/admin/salle" element={<ProtectedRoute><Salle /></ProtectedRoute>} />
+          <Route path="/admin/classe" element={<ProtectedRoute><ClasseTable /></ProtectedRoute>} />
+          <Route path="/admin/affectation" element={<ProtectedRoute><Affectation /></ProtectedRoute>} />
+          <Route path="/admin/planning" element={<ProtectedRoute><Planning /></ProtectedRoute>} />
+          <Route path="/enseignant/disponibilite" element={<ProtectedRoute><Disponibilite /></ProtectedRoute>} />
+          <Route path="/enseignant/planning" element={<ProtectedRoute><PlanningEnseignant /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>

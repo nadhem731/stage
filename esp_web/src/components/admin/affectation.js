@@ -5,22 +5,30 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { ROLES } from '../../config/roles';
 import '../../style/etudient.css';
+import '../../style/table.css';
 
 const Affectation = () => {
     const navigate = useNavigate();
     const [students, setStudents] = useState([]);
     const [teachers, setTeachers] = useState([]);
-    const [salles, setSalles] = useState([]);
     const [classes, setClasses] = useState([]);
     const [affectations, setAffectations] = useState([]);
+    const [teacherAffectationsByClass, setTeacherAffectationsByClass] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [formType, setFormType] = useState('student'); // 'student' or 'teacher'
+    const [activeTab, setActiveTab] = useState('student'); // 'student' or 'teacher'
+    const [showStudentForm, setShowStudentForm] = useState(false);
+    const [showTeacherForm, setShowTeacherForm] = useState(false);
     const [formData, setFormData] = useState({
         userId: '',
-        salleId: '',
         classeId: '',
         dateAffectation: new Date().toISOString().split('T')[0] // Default to today
+    });
+    const [editId, setEditId] = useState(null);
+    const [editData, setEditData] = useState({
+        userId: '',
+        classeId: '',
+        dateAffectation: ''
     });
 
     const fetchInitialData = async () => {
@@ -36,19 +44,29 @@ const Affectation = () => {
             const studentParams = { params: { role: ROLES.ETUDIANT } };
             const teacherParams = { params: { role: ROLES.ENSEIGNANT } };
 
-            const [studentsResponse, teachersResponse, sallesResponse, classesResponse, affectationsResponse] = await Promise.all([
+            const [studentsResponse, teachersResponse, classesResponse, affectationsResponse, teacherAffectationsResponse] = await Promise.all([
                 axios.get('/api/users', { ...config, ...studentParams }),
                 axios.get('/api/users', { ...config, ...teacherParams }),
-                axios.get('/api/salles', config),
                 axios.get('/api/classes', config),
-                axios.get('/api/affectations', config)
+                axios.get('/api/affectations', config),
+                axios.get('/api/affectations/enseignants', config)
             ]);
 
             setStudents(studentsResponse.data);
             setTeachers(teachersResponse.data);
-            setSalles(sallesResponse.data);
             setClasses(classesResponse.data);
             setAffectations(affectationsResponse.data);
+            
+            // Group teacher affectations by class
+            const groupedByClass = {};
+            teacherAffectationsResponse.data.forEach(affectation => {
+                const className = affectation.classe.nomClasse;
+                if (!groupedByClass[className]) {
+                    groupedByClass[className] = [];
+                }
+                groupedByClass[className].push(affectation);
+            });
+            setTeacherAffectationsByClass(groupedByClass);
 
         } catch (err) {
             setError('Erreur lors du chargement des données');
@@ -63,11 +81,28 @@ const Affectation = () => {
     }, []);
 
     const handleChange = (selectedOption, actionMeta) => {
-        setFormData({ ...formData, [actionMeta.name]: selectedOption ? selectedOption.value : '' });
+        const { name } = actionMeta;
+        const value = selectedOption ? selectedOption.value : '';
+
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (activeTab === 'teacher' && name === 'classeId') {
+        }
     };
 
     const handleDateChange = (e) => {
         setFormData({ ...formData, dateAffectation: e.target.value });
+    };
+
+    const handleAddClick = (type) => {
+        if (type === 'student') {
+            setShowStudentForm(!showStudentForm);
+            setShowTeacherForm(false);
+        } else {
+            setShowTeacherForm(!showTeacherForm);
+            setShowStudentForm(false);
+        }
+        setEditId(null);
     };
 
     const handleSubmit = async (e) => {
@@ -82,7 +117,6 @@ const Affectation = () => {
                 userId: formData.userId,
                 classeId: formData.classeId,
                 dateAffectation: formData.dateAffectation,
-                salleId: formType === 'student' ? formData.salleId : null
             };
 
             await axios.post('/api/affectations', payload, {
@@ -90,11 +124,75 @@ const Affectation = () => {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            alert(`Affectation ${formType === 'student' ? 'etudiant' : 'enseignant'} créée avec succès!`);
+            alert(`Affectation ${activeTab === 'student' ? 'etudiant' : 'enseignant'} créée avec succès!`);
+            if (activeTab === 'student') {
+                setShowStudentForm(false);
+            } else {
+                setShowTeacherForm(false);
+            }
             fetchInitialData(); // Refresh data
         } catch (err) {
             setError(`Erreur lors de la création de l'affectation`);
             console.error(err);
+        }
+    };
+
+    const handleEditClick = (affectation) => {
+        setEditId(affectation.idAffectation);
+        setEditData({
+            userId: affectation.user.idUser,
+            classeId: affectation.classe.idClasse,
+            dateAffectation: affectation.dateAffectation
+        });
+        if (affectation.user.role.typeRole === ROLES.ETUDIANT) {
+            setShowStudentForm(true);
+        } else {
+            setShowTeacherForm(true);
+        }
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+        try {
+            const payload = {
+                userId: editData.userId,
+                classeId: editData.classeId,
+                dateAffectation: editData.dateAffectation,
+            };
+
+            await axios.put(`/api/affectations/${editId}`, payload, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            alert(`Affectation modifiée avec succès!`);
+            setEditId(null);
+            setShowStudentForm(false);
+            setShowTeacherForm(false);
+            fetchInitialData(); // Refresh data
+        } catch (err) {
+            setError(`Erreur lors de la modification de l'affectation`);
+            console.error(err);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Voulez-vous vraiment supprimer cette affectation ?')) {
+            try {
+                const token = localStorage.getItem('token');
+                await axios.delete(`/api/affectations/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                fetchInitialData();
+            } catch (err) {
+                setError('Erreur lors de la suppression de l\'affectation');
+                console.error(err);
+            }
         }
     };
 
@@ -104,29 +202,27 @@ const Affectation = () => {
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
             <Sidebar activeMenu="Affectation" setActiveMenu={() => {}} />
-            <main style={{ flex: 1, padding: '2rem', marginLeft: 260 }}>
-                <h2>Créer une Affectation</h2>
-
-                <div>
-                    <label>
-                        <input
-                            type="radio"
-                            value="student"
-                            checked={formType === 'student'}
-                            onChange={() => setFormType('student')}
-                        />
-                        Étudiant
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            value="teacher"
-                            checked={formType === 'teacher'}
-                            onChange={() => setFormType('teacher')}
-                        />
-                        Enseignant
-                    </label>
+            <main style={{ 
+        flex: 1, 
+        padding: '2rem', 
+        marginLeft: '280px',
+        minWidth: 0,
+        position: 'relative',
+        zIndex: 1
+      }}>
+                <div className="tabs" style={{ marginBottom: '2rem', borderBottom: '1px solid #ddd', display: 'flex' }}>
+                    <button 
+                      style={{ padding: '1rem', border: 'none', background: activeTab === 'student' ? '#fff' : 'transparent', borderBottom: activeTab === 'student' ? '3px solid #CB0920' : 'none', cursor: 'pointer', fontWeight: '600' }}
+                      onClick={() => setActiveTab('student')}>
+                      Affectations Étudiants
+                    </button>
+                    <button 
+                      style={{ padding: '1rem', border: 'none', background: activeTab === 'teacher' ? '#fff' : 'transparent', borderBottom: activeTab === 'teacher' ? '3px solid #CB0920' : 'none', cursor: 'pointer', fontWeight: '600' }}
+                      onClick={() => setActiveTab('teacher')}>
+                      Affectations Enseignants
+                    </button>
                 </div>
+
 
                 {loading ? (
                     <p>Chargement...</p>
@@ -134,116 +230,248 @@ const Affectation = () => {
                     <p style={{ color: 'red' }}>{error}</p>
                 ) : (
                     <>
-                        <form className="add-etudient-form" onSubmit={handleSubmit} style={{
-                            background: '#fff',
-                            border: '1px solid #f5f5f5',
-                            borderRadius: 12,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                            padding: 24,
-                            marginBottom: 24,
-                            maxWidth: 500,
-                            marginLeft: 'auto',
-                            marginRight: 'auto',
-                            marginTop: 16
-                        }}>
-                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                <label htmlFor="userId">{formType === 'student' ? 'Etudiant' : 'Enseignant'}:</label>
-                                <Select
-                                    name="userId"
-                                    options={(formType === 'student' ? students : teachers).map(user => ({ value: user.idUser, label: `${user.nom} ${user.prenom}` }))}
-                                    onChange={handleChange}
-                                    isClearable
-                                    isSearchable
-                                    placeholder="Sélectionner..."
-                                    styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
-                                />
-                            </div>
-
-                            {formType === 'student' && (
-                                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                                    <label htmlFor="salleId">Salle:</label>
-                                    <Select
-                                        name="salleId"
-                                        options={salles.map(salle => ({ value: salle.idSalle, label: salle.numSalle }))}
-                                        onChange={handleChange}
-                                        isClearable
-                                        isSearchable
-                                        placeholder="Sélectionner..."
-                                        styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
-                                    />
+                        {activeTab === 'student' && (
+                            <div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <h3 style={{ marginTop: '2rem' }}>Affectations Étudiants</h3>
+                                    <button
+                                        className="add-etudient-btn"
+                                        title="Ajouter une affectation"
+                                        onClick={() => handleAddClick('student')}
+                                        style={{
+                                            background: '#CB0920',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: 40,
+                                            height: 40,
+                                            fontSize: 28,
+                                            fontWeight: 700,
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginLeft: 12
+                                        }}
+                                    >
+                                        {showStudentForm ? '-' : '+'}
+                                    </button>
                                 </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                                <label htmlFor="classeId">Classe:</label>
-                                <Select
-                                    name="classeId"
-                                    options={classes.map(classe => ({ value: classe.idClasse, label: classe.nomClasse }))}
-                                    onChange={handleChange}
-                                    isClearable
-                                    isSearchable
-                                    placeholder="Sélectionner..."
-                                    styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
-                                />
+                                {showStudentForm && (
+                                    <form className="add-etudient-form" onSubmit={handleSubmit} style={{
+                                        background: '#fff',
+                                        border: '1px solid #f5f5f5',
+                                        borderRadius: 12,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                                        padding: 24,
+                                        marginBottom: 24,
+                                        maxWidth: 500,
+                                        marginLeft: 'auto',
+                                        marginRight: 'auto',
+                                        marginTop: 16
+                                    }}>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                            <label htmlFor="userId">Etudiant:</label>
+                                            <Select
+                                                name="userId"
+                                                options={students.map(user => ({ value: user.idUser, label: `${user.nom} ${user.prenom}` }))}
+                                                onChange={handleChange}
+                                                isClearable
+                                                isSearchable
+                                                placeholder="Sélectionner..."
+                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                                            <label htmlFor="classeId">Classe:</label>
+                                            <Select
+                                                name="classeId"
+                                                options={classes.map(classe => ({ value: classe.idClasse, label: classe.nomClasse }))}
+                                                onChange={handleChange}
+                                                isClearable
+                                                isSearchable
+                                                placeholder="Sélectionner..."
+                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                                            <label htmlFor="dateAffectation">Date d'affectation:</label>
+                                            <input
+                                                type="date"
+                                                name="dateAffectation"
+                                                value={formData.dateAffectation}
+                                                onChange={handleDateChange}
+                                                style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
+                                            />
+                                        </div>
+                                        <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer', marginTop: 12 }}>
+                                            Créer Affectation Etudiant
+                                        </button>
+                                    </form>
+                                )}
+                                <table className="table-dashboard">
+                                    <thead>
+                                        <tr>
+                                            <th>Étudiant</th>
+                                            <th>Classe</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {studentAffectations.map(affectation => (
+                                            <tr key={affectation.idAffectation}>
+                                                <td>{affectation.user.nom} {affectation.user.prenom}</td>
+                                                <td>{affectation.classe.nomClasse}</td>
+                                                <td>{affectation.dateAffectation}</td>
+                                                <td>
+                                                    <button
+                                                        style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
+                                                        onClick={() => handleEditClick(affectation)}
+                                                    >Modifier</button>
+                                                    <button
+                                                        style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                                                        onClick={() => handleDelete(affectation.idAffectation)}
+                                                    >Supprimer</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                            
-                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
-                                <label htmlFor="dateAffectation">Date d'affectation:</label>
-                                <input
-                                    type="date"
-                                    name="dateAffectation"
-                                    value={formData.dateAffectation}
-                                    onChange={handleDateChange}
-                                    style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
-                                />
+                        )}
+
+                        {activeTab === 'teacher' && (
+                            <div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <h3 style={{ marginTop: '2rem' }}>Affectations Enseignants</h3>
+                                    <button
+                                        className="add-etudient-btn"
+                                        title="Ajouter une affectation"
+                                        onClick={() => handleAddClick('teacher')}
+                                        style={{
+                                            background: '#CB0920',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: 40,
+                                            height: 40,
+                                            fontSize: 28,
+                                            fontWeight: 700,
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginLeft: 12
+                                        }}
+                                    >
+                                        {showTeacherForm ? '-' : '+'}
+                                    </button>
+                                </div>
+                                {showTeacherForm && (
+                                    <form className="add-etudient-form" onSubmit={handleSubmit} style={{
+                                        background: '#fff',
+                                        border: '1px solid #f5f5f5',
+                                        borderRadius: 12,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                                        padding: 24,
+                                        marginBottom: 24,
+                                        maxWidth: 500,
+                                        marginLeft: 'auto',
+                                        marginRight: 'auto',
+                                        marginTop: 16
+                                    }}>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                            <label htmlFor="userId">Enseignant:</label>
+                                            <Select
+                                                name="userId"
+                                                options={teachers.map(user => ({ value: user.idUser, label: `${user.nom} ${user.prenom}` }))}
+                                                onChange={handleChange}
+                                                isClearable
+                                                isSearchable
+                                                placeholder="Sélectionner..."
+                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                                            <label htmlFor="classeId">Classe:</label>
+                                            <Select
+                                                name="classeId"
+                                                options={classes.map(classe => ({ value: classe.idClasse, label: classe.nomClasse }))}
+                                                onChange={handleChange}
+                                                isClearable
+                                                isSearchable
+                                                placeholder="Sélectionner..."
+                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+                                            <label htmlFor="dateAffectation">Date d'affectation:</label>
+                                            <input
+                                                type="date"
+                                                name="dateAffectation"
+                                                value={formData.dateAffectation}
+                                                onChange={handleDateChange}
+                                                style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}
+                                            />
+                                        </div>
+                                        <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer', marginTop: 12 }}>
+                                            Créer Affectation Enseignant
+                                        </button>
+                                    </form>
+                                )}
+                                {Object.keys(teacherAffectationsByClass).length === 0 ? (
+                                    <p style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>Aucune affectation d'enseignant trouvée</p>
+                                ) : (
+                                    Object.entries(teacherAffectationsByClass).map(([className, affectations]) => (
+                                        <div key={className} style={{ marginBottom: '2rem', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
+                                            <div style={{ background: '#f8f9fa', padding: '1rem', borderBottom: '1px solid #e0e0e0' }}>
+                                                <h4 style={{ margin: 0, color: '#CB0920', fontSize: '1.1rem' }}>Classe: {className}</h4>
+                                                <span style={{ color: '#666', fontSize: '0.9rem' }}>({affectations.length} enseignant{affectations.length > 1 ? 's' : ''})</span>
+                                            </div>
+                                            <table className="table-dashboard" style={{ margin: 0, border: 'none' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Enseignant</th>
+                                                        <th>Email</th>
+                                                        <th>Date d'affectation</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {affectations.map(affectation => (
+                                                        <tr key={affectation.idAffectation}>
+                                                            <td>
+                                                                <div style={{ fontWeight: '600' }}>
+                                                                    {affectation.user.nom} {affectation.user.prenom}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                                                                    {affectation.user.role.typeRole}
+                                                                </div>
+                                                            </td>
+                                                            <td>{affectation.user.email}</td>
+                                                            <td>{new Date(affectation.dateAffectation).toLocaleDateString('fr-FR')}</td>
+                                                            <td>
+                                                                <button
+                                                                    style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
+                                                                    onClick={() => handleEditClick(affectation)}
+                                                                >Modifier</button>
+                                                                <button
+                                                                    style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                                                                    onClick={() => handleDelete(affectation.idAffectation)}
+                                                                >Supprimer</button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ))
+                                )}
                             </div>
-
-                            <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer', marginTop: 12 }}>
-                                Créer Affectation {formType === 'student' ? 'Etudiant' : 'Enseignant'}
-                            </button>
-                        </form>
-
-                        <h3 style={{ marginTop: '2rem' }}>Affectations Étudiants</h3>
-                        <table className="table-dashboard">
-                            <thead>
-                                <tr>
-                                    <th>Étudiant</th>
-                                    <th>Salle</th>
-                                    <th>Classe</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {studentAffectations.map(affectation => (
-                                    <tr key={affectation.idAffectation}>
-                                        <td>{affectation.user.nom} {affectation.user.prenom}</td>
-                                        <td>{affectation.salle ? affectation.salle.numSalle : 'N/A'}</td>
-                                        <td>{affectation.classe.nomClasse}</td>
-                                        <td>{affectation.dateAffectation}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        <h3 style={{ marginTop: '2rem' }}>Affectations Enseignants</h3>
-                        <table className="table-dashboard">
-                            <thead>
-                                <tr>
-                                    <th>Enseignant</th>
-                                    <th>Classe</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {teacherAffectations.map(affectation => (
-                                    <tr key={affectation.idAffectation}>
-                                        <td>{affectation.user.nom} {affectation.user.prenom}</td>
-                                        <td>{affectation.classe.nomClasse}</td>
-                                        <td>{affectation.dateAffectation}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        )}
                     </>
                 )}
             </main>

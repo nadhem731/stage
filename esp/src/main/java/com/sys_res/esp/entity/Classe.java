@@ -20,4 +20,6 @@ public class Classe {
     @Column(name = "nom_classe", length = 50, unique = true, nullable = false)
     private String nomClasse;
 
-} 
+    @Column(name = "effectif")
+    private Integer effectif;
+}

@@ -26,11 +26,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with identifiant: " + identifiant));
         
         // Crée un objet UserDetails avec les informations de l'utilisateur
+        String roleWithPrefix = "ROLE_" + user.getRole().getTypeRole().toUpperCase();
+        System.out.println("Loading user: " + user.getIdentifiant() + " with role: " + roleWithPrefix);
+        
         return new User(
                 user.getIdentifiant(),              // Username (utilisé comme identifiant)
                 user.getPassword(),           // Mot de passe haché
                 Collections.singletonList(    // Autorités (rôles)
-                    new SimpleGrantedAuthority("ROLE_" + user.getRole().getTypeRole())
+                    new SimpleGrantedAuthority(roleWithPrefix)
                 )
         );
     }

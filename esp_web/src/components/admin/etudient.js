@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
 import Sidebar from '../Sidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { ROLES } from '../../config/roles';
 import '../../style/etudient.css';
+import '../../style/table.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
 
@@ -69,7 +69,7 @@ const Etudient = () => {
     try {
       await axios.post('/api/auth/signup', {
         ...formData,
-        roleTypeRole: ROLES.ETUDIANT,
+        roleTypeRole: ROLES.ETUDIANT, // Correction ici
         password: formData.cin, // mot de passe = cin
       });
       setFormSuccess('Étudiant ajouté avec succès !');
@@ -157,8 +157,15 @@ const Etudient = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar activeMenu="Etudient" setActiveMenu={() => {}} />
-      <main style={{ flex: 1, padding: '2rem', marginLeft: 260 }}>
+      <Sidebar activeMenu="Etudiant" setActiveMenu={() => {}} />
+      <main style={{ 
+        flex: 1, 
+        padding: '2rem', 
+        marginLeft: '280px',
+        minWidth: 0,
+        position: 'relative',
+        zIndex: 1
+      }}>
         <button onClick={() => navigate('/dashboard')} style={{ display: 'none' }} />
         <div className="dashboard-content" style={{ position: 'relative' }}>
           <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

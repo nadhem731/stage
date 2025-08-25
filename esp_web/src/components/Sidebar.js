@@ -76,9 +76,9 @@ function Sidebar({ activeMenu, setActiveMenu }) {
         icon: '👤',
         roles: ['Enseignant'], // Seuls les enseignants peuvent voir cette section
         items: [
-          { id: 'dashboard', label: 'Tableau de bord', icon: '📊', notifications: 0 },
-          { id: 'disponibilite', label: 'Mes Disponibilités', icon: '📋', notifications: 0 },
-          { id: 'planning-enseignant', label: 'Mon Planning', icon: '📅', notifications: 0 },
+          { id: 'dashboard', label: 'Tableau de bord', icon: '📊', notifications: 0 , onClick: () => navigate('/dashboard')},
+          { id: 'disponibilite', label: 'Mes Disponibilités', icon: '📋', notifications: 0, onClick: () => navigate('/enseignant/disponibilite') },
+          { id: 'planning-enseignant', label: 'Mon Planning', icon: '📅', notifications: 0, onClick: () => navigate('/enseignant/planning') },
         ]
       },
       {
@@ -215,4 +215,4 @@ function Sidebar({ activeMenu, setActiveMenu }) {
   );
 }
 
-export default Sidebar; 
+export default Sidebar;

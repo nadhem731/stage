@@ -90,7 +90,7 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
         user.setTel(signupRequest.getTel());
         user.setIdentifiant(signupRequest.getIdentifiant());
         // Le mot de passe est toujours égal au cin, encodé
-        user.setPassword(passwordEncoder.encode(signupRequest.getCin()));
+        user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
         user.setCin(signupRequest.getCin());
         user.setMatiere(signupRequest.getMatiere());
         user.setRole(role);
@@ -105,8 +105,8 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
         }
 
         try {
-            logger.info("Generating JWT token for user: {}", user.getEmail());
-            String token = jwtUtil.generateToken(user.getEmail(), role.getTypeRole());
+            logger.info("Generating JWT token for user: {}", user.getIdentifiant());
+            String token = jwtUtil.generateToken(user.getIdentifiant(), role.getTypeRole());
             logger.info("JWT token generated successfully");
             Map<String, String> response = new HashMap<>();
             response.put("token", token);

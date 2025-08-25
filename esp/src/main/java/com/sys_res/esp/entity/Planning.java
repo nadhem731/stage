@@ -1,6 +1,7 @@
 package com.sys_res.esp.entity;
 
 import java.sql.Date;
+import java.sql.Time; // Import Time
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,8 +32,13 @@ public class Planning {
     private Date dateFin;
 
     @NotNull
-    @Column(name = "statut_type_status")
-    private String statutTypeStatus;
+    @Column(name = "heure_debut") // New field
+    private Time heureDebut;
+
+    @NotNull
+    @Column(name = "heure_fin") // New field
+    private Time heureFin;
+
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_classe", referencedColumnName = "id_classe", nullable = false)
@@ -48,6 +54,12 @@ public class Planning {
 
     @Column(name = "type_planning")
     private String typePlanning;
+
+    @Column(name = "statut_validation")
+    private String statutValidation = "en_cours"; // 'en_cours', 'valide'
+
+    @Column(name = "mode_cours")
+    private String modeCours = "presentiel"; // 'presentiel', 'en_ligne'
 
     // Getters and Setters
     public Long getIdPlanning() {
@@ -74,13 +86,23 @@ public class Planning {
         this.dateFin = dateFin;
     }
 
-    public String getStatutTypeStatus() {
-        return statutTypeStatus;
+    // New getters and setters for heureDebut and heureFin
+    public Time getHeureDebut() {
+        return heureDebut;
     }
 
-    public void setStatutTypeStatus(String statutTypeStatus) {
-        this.statutTypeStatus = statutTypeStatus;
+    public void setHeureDebut(Time heureDebut) {
+        this.heureDebut = heureDebut;
     }
+
+    public Time getHeureFin() {
+        return heureFin;
+    }
+
+    public void setHeureFin(Time heureFin) {
+        this.heureFin = heureFin;
+    }
+
 
     public Classe getClasse() {
         return classe;
@@ -104,5 +126,29 @@ public class Planning {
 
     public void setUser(Users user) {
         this.user = user;
+    }
+
+    public String getTypePlanning() {
+        return typePlanning;
+    }
+
+    public void setTypePlanning(String typePlanning) {
+        this.typePlanning = typePlanning;
+    }
+
+    public String getStatutValidation() {
+        return statutValidation;
+    }
+
+    public void setStatutValidation(String statutValidation) {
+        this.statutValidation = statutValidation;
+    }
+
+    public String getModeCours() {
+        return modeCours;
+    }
+
+    public void setModeCours(String modeCours) {
+        this.modeCours = modeCours;
     }
 }

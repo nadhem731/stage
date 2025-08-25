@@ -1,0 +1,307 @@
+/* Conteneur principal */
+.planning-enseignant-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    position: relative;
+    z-index: 1;
+}
+
+/* En-tête */
+.planning-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.planning-header h2 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.planning-header p {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Conteneur des onglets */
+.tabs-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.tab-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #e3e3e3, #f8f9fa);
+    color: #6c757d;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tab-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.tab-button.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Conteneur de rafraîchissement */
+.refresh-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.refresh-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.refresh-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+.refresh-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Messages d'erreur */
+.error-message {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+/* Contenu des onglets */
+.tab-content {
+    min-height: 400px;
+}
+
+/* Message "Aucune donnée" */
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+    font-size: 1.2rem;
+}
+
+.no-data p {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Grille de planning */
+.planning-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Cartes de jour */
+.day-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.day-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* En-têtes des cartes */
+.day-header {
+    padding: 15px 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cours-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.soutenance-header {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.day-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cours-count, .soutenance-count {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Contenu des cartes */
+.day-content {
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Éléments de planning */
+.planning-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid #f1f3f4;
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+    transition: background-color 0.2s ease;
+}
+
+.planning-item:hover {
+    background-color: #f8f9fa;
+}
+
+.planning-item:last-child {
+    border-bottom: none;
+}
+
+/* Créneaux horaires */
+.time-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.cours-item .time-slot {
+    border-left-color: #667eea;
+}
+
+.soutenance-item .time-slot {
+    border-left-color: #28a745;
+}
+
+.time-start, .time-end {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #2c3e50;
+}
+
+.time-separator {
+    margin: 2px 0;
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+.duration {
+    font-size: 0.75rem;
+    color: #28a745;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* Détails du planning */
+.planning-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.classe-info, .etudiant-info {
+    font-size: 1rem;
+    color: #2c3e50;
+}
+
+.classe-info strong, .etudiant-info strong {
+    font-weight: 700;
+}
+
+.salle-info, .type-info, .jury-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .planning-enseignant-container {
+        padding: 15px;
+    }
+    
+    .planning-header h2 {
+        font-size: 2rem;
+    }
+    
+    .tabs-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .tab-button {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .planning-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .planning-item {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .time-slot {
+        align-self: flex-start;
+        min-width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .day-header {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    
+    .planning-item {
+        padding: 12px 15px;
+    }
+}

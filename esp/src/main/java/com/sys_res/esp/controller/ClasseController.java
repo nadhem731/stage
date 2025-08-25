@@ -60,4 +60,4 @@ public class ClasseController {
             return ResponseEntity.notFound().build();
         }
     }
-} 
+}

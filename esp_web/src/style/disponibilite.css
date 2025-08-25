@@ -1,0 +1,29 @@
+/* Timetable styles specific to disponibilite page */
+.disponibilite-page .table-dashboard th,
+.disponibilite-page .table-dashboard td {
+    text-align: center;
+    border: 1px solid #dee2e6;
+}
+
+.disponibilite-page .table-dashboard td {
+    cursor: pointer;
+    background-color: #f8f9fa; /* Default unselected color */
+}
+
+.disponibilite-page .table-dashboard td.available {
+    background-color: #e26c6c; /* Green for available */
+}
+
+.disponibilite-page .table-dashboard .pause-header {
+    background-color: #6c757d;
+    color: white;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    border: none;
+}
+
+.disponibilite-page .table-dashboard .pause-cell {
+    background-color: #6c757d;
+    cursor: default;
+    border: none;
+}

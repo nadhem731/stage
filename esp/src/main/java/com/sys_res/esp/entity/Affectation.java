@@ -29,10 +29,6 @@ public class Affectation {
     @JoinColumn(name = "id_classe", referencedColumnName = "id_classe")
     private Classe classe;
 
-    @ManyToOne
-    @JoinColumn(name = "id_salle", referencedColumnName = "id_salle")
-    private Salle salle;
-
     @NotNull
     @Column(name = "date_affectation")
     private String dateAffectation;
