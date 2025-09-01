@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -25,13 +28,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sys_res.esp.dto.PlanningDto;
 import com.sys_res.esp.entity.Classe;
 import com.sys_res.esp.entity.Planning;
+import com.sys_res.esp.entity.Soutenance;
 import com.sys_res.esp.entity.Salle;
 import com.sys_res.esp.entity.Users;
 import com.sys_res.esp.repository.ClasseRepository;
 import com.sys_res.esp.repository.PlanningRepository;
 import com.sys_res.esp.repository.SalleRepository;
 import com.sys_res.esp.repository.UsersRepository;
+import com.sys_res.esp.repository.SoutenanceRepository;
 import com.sys_res.esp.service.PlanningService;
+import com.sys_res.esp.service.EmailService;
 
 import reactor.core.publisher.Mono;
 
@@ -50,12 +56,18 @@ public class PlanningController {
 
     @Autowired
     private PlanningService planningService;
+
+    @Autowired
+    private EmailService emailService;
     
     @Autowired
     private PlanningRepository planningRepository;
 
     @Autowired
     private UsersRepository usersRepository;
+    
+    @Autowired
+    private SoutenanceRepository soutenanceRepository;
 
     @GetMapping
     public List<Planning> getAllPlannings() {
@@ -75,7 +87,7 @@ public class PlanningController {
 
     @GetMapping("/enseignant")
     @PreAuthorize("hasRole('ROLE_ENSEIGNANT') or hasRole('ROLE_ADMIN')")
-    public ResponseEntity<List<Planning>> getPlanningsByEnseignant() {
+    public ResponseEntity<Map<String, Object>> getPlanningsByEnseignant() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String username = authentication.getName();
@@ -84,22 +96,67 @@ public class PlanningController {
             Users currentUser = usersRepository.findByIdentifiant(username)
                                                .orElseThrow(() -> new RuntimeException("User not found with identifiant: " + username));
             
-            System.out.println("DEBUG: Utilisateur trouvé - ID: " + currentUser.getIdUser() + ", Nom: " + currentUser.getNom());
+            System.out.println("DEBUG: User trouvé - ID: " + currentUser.getIdUser() + ", Nom: " + currentUser.getNom());
             
+            // Récupérer les plannings normaux
             List<Planning> plannings = planningRepository.findByUserId(currentUser.getIdUser());
             System.out.println("DEBUG: Nombre de plannings trouvés: " + plannings.size());
             
-            if (!plannings.isEmpty()) {
-                System.out.println("DEBUG: Premier planning - Date: " + plannings.get(0).getDateDebut() + 
-                                 ", Heure: " + plannings.get(0).getHeureDebut() + 
-                                 ", Classe: " + (plannings.get(0).getClasse() != null ? plannings.get(0).getClasse().getNomClasse() : "null"));
-            }
+            // Séparer les cours normaux et les rattrapages
+            // Désormais, on ne distingue plus les rattrapages: retourner tous les plannings dans "cours"
+            List<Planning> coursNormaux = new ArrayList<>(plannings);
+            List<Planning> rattrapages = new ArrayList<>();
+            System.out.println("DEBUG: Total plannings (cours unifiés): " + coursNormaux.size());
+
+            // Créer la réponse en conservant la forme JSON attendue par le frontend
+            Map<String, Object> response = new HashMap<>();
+            response.put("cours", coursNormaux);
+            response.put("rattrapages", rattrapages); // liste vide pour compatibilité
             
-            return ResponseEntity.ok(plannings);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             System.err.println("ERROR: Erreur lors de la récupération des plannings: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    // Endpoint pour récupérer les séances (plannings + soutenances) d'un enseignant
+    @GetMapping("/seances/enseignant")
+    @PreAuthorize("hasRole('ROLE_ENSEIGNANT') or hasRole('ROLE_ADMIN')")
+    public ResponseEntity<?> getSeancesEnseignant() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            
+            Users currentUser = usersRepository.findByIdentifiant(username)
+                                               .orElseThrow(() -> new RuntimeException("User not found with identifiant: " + username));
+            
+            // Récupérer les plannings de l'enseignant
+            List<Planning> plannings = planningRepository.findByUserId(currentUser.getIdUser());
+            
+            // Convertir en format unifié pour le frontend
+            List<Map<String, Object>> seances = new ArrayList<>();
+            
+            for (Planning planning : plannings) {
+                Map<String, Object> seance = new HashMap<>();
+                seance.put("id", planning.getIdPlanning());
+                seance.put("type", "cours");
+                seance.put("date", planning.getDateDebut().toString());
+                seance.put("heureDebut", planning.getHeureDebut().toString());
+                seance.put("heureFin", planning.getHeureFin().toString());
+                seance.put("classe", planning.getClasse() != null ? planning.getClasse().getNomClasse() : "");
+                seance.put("matiere", "Cours");
+                seance.put("salle", planning.getSalle() != null ? planning.getSalle().getNumSalle() : "");
+                seance.put("mode", "Présentiel");
+                seances.add(seance);
+            }
+            
+            return ResponseEntity.ok(seances);
+        } catch (Exception e) {
+            System.err.println("ERROR: Erreur lors de la récupération des séances: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -224,6 +281,42 @@ public class PlanningController {
         return planningRepository.save(planning);
     }
 
+    @PostMapping("/sync-to-microsoft")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_ENSEIGNANT') or hasRole('ROLE_ETUDIANT')")
+    public ResponseEntity<String> syncToMicrosoft() {
+        try {
+            System.out.println("DEBUG: Début synchronisation manuelle Microsoft Calendar");
+            
+            // Récupérer l'utilisateur connecté
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String email = authentication.getName();
+            Users currentUser = usersRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+            
+            // Synchroniser les plannings de l'utilisateur
+            List<Planning> userPlannings = planningRepository.findByUserId(currentUser.getIdUser());
+            if (!userPlannings.isEmpty()) {
+                emailService.syncCoursesToMicrosoftCalendar(currentUser, userPlannings);
+            }
+            
+            // Si c'est un étudiant, synchroniser aussi ses soutenances
+            if ("Etudiant".equals(currentUser.getRole().getTypeRole())) {
+                List<Soutenance> userSoutenances = soutenanceRepository.findByEtudiantId(currentUser.getIdUser());
+                for (Soutenance soutenance : userSoutenances) {
+                    emailService.syncStudentSoutenanceToMicrosoftCalendar(currentUser, soutenance);
+                }
+            }
+            
+            System.out.println("DEBUG: Synchronisation Microsoft Calendar terminée avec succès");
+            return ResponseEntity.ok("Synchronisation Microsoft Calendar réussie. Vos événements sont maintenant visibles dans votre calendrier Microsoft.");
+            
+        } catch (Exception e) {
+            System.err.println("ERREUR: Échec de la synchronisation Microsoft Calendar: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erreur lors de la synchronisation: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/save-bulk")
     @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_ENSEIGNANT')")
     public ResponseEntity<String> saveBulkPlanning(@RequestBody List<PlanningDto> planningList) {
@@ -306,9 +399,53 @@ public class PlanningController {
                 planningRepository.save(planning);
             }
             
+            // Envoyer l'email de notification à tous les enseignants après validation réussie
+            // ET synchroniser automatiquement avec Microsoft Calendar
+            try {
+                emailService.sendPlanningNotificationToAllTeachers();
+                System.out.println("DEBUG: Emails et synchronisation Microsoft Calendar terminés pour tous les enseignants");
+            } catch (Exception emailException) {
+                // Log l'erreur mais ne pas faire échouer la sauvegarde
+                System.err.println("Erreur lors de l'envoi des emails ou synchronisation Calendar: " + emailException.getMessage());
+            }
+            
+            // Envoyer l'emploi du temps aux étudiants des classes concernées
+            try {
+                List<Planning> savedPlannings = planningRepository.findByStatutValidation("valide");
+                emailService.sendClassScheduleToStudents(savedPlannings);
+            } catch (Exception emailException) {
+                System.err.println("Erreur lors de l'envoi des emails aux étudiants: " + emailException.getMessage());
+            }
+            
             return ResponseEntity.ok("Planning sauvegardé avec succès en base de données (ancien planning supprimé)");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erreur lors de la sauvegarde: " + e.getMessage());
+        }
+    }
+    
+    // Endpoint de test pour diagnostiquer l'envoi d'emails
+    @PostMapping("/test-email")
+    public ResponseEntity<String> testEmailSending() {
+        try {
+            System.out.println("=== TEST ENVOI EMAIL PLANNING ===");
+            
+            // Récupérer tous les plannings validés
+            List<Planning> validPlannings = planningRepository.findByStatutValidation("valide");
+            System.out.println("Plannings validés trouvés: " + validPlannings.size());
+            
+            if (validPlannings.isEmpty()) {
+                return ResponseEntity.ok("Aucun planning validé trouvé. Veuillez d'abord valider des plannings.");
+            }
+            
+            // Tester l'envoi d'emails aux étudiants
+            emailService.sendClassScheduleToStudents(validPlannings);
+            
+            return ResponseEntity.ok("Test d'envoi d'emails terminé. Vérifiez les logs de la console.");
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors du test d'envoi d'emails: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Erreur lors du test: " + e.getMessage());
         }
     }
 }

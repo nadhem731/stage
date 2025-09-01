@@ -40,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = null;
         String identifiant = null;
 
-        logger.info("Processing request for URI: {}", request.getRequestURI());
+        logger.info("Processing request for URI: {} Method: {}", request.getRequestURI(), request.getMethod());
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);

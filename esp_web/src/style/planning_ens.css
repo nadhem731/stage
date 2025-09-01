@@ -1,11 +1,31 @@
+/* Import des variables CSS de dashboard.css */
+:root {
+  --red-main: #CB0920;
+  --red-hover: #e53935;
+  --red-light: #ffebee;
+  --black-main: #111111;
+  --black-soft: #333333;
+  --white-main: #ffffff;
+  --white-soft: #f8f9fa;
+  --gray-light: #f5f5f5;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+  --blue-main: #1976d2;
+  --green-main: #388e3c;
+  --orange-main: #f57c00;
+  --purple-main: #7b1fa2;
+}
+
 /* Conteneur principal */
 .planning-enseignant-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+    max-width: none;
+    margin: 0;
+    padding: 1rem;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     position: relative;
     z-index: 1;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* En-tête */
@@ -15,7 +35,7 @@
 }
 
 .planning-header h2 {
-    color: #2c3e50;
+    color: var(--black-main);
     font-size: 2.5rem;
     margin-bottom: 10px;
     font-weight: 700;
@@ -54,9 +74,9 @@
 }
 
 .tab-button.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, var(--red-main), var(--red-hover));
+    color: var(--white-main);
+    box-shadow: 0 4px 12px rgba(203, 9, 32, 0.4);
 }
 
 /* Conteneur de rafraîchissement */
@@ -70,17 +90,17 @@
     padding: 10px 20px;
     border: none;
     border-radius: 20px;
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
+    background: linear-gradient(135deg, var(--red-main), var(--red-hover));
+    color: var(--white-main);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 2px 4px rgba(203, 9, 32, 0.3);
 }
 
 .refresh-button:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 4px 8px rgba(203, 9, 32, 0.4);
 }
 
 .refresh-button:disabled {
@@ -90,14 +110,14 @@
 
 /* Messages d'erreur */
 .error-message {
-    background: linear-gradient(135deg, #dc3545, #c82333);
-    color: white;
+    background: linear-gradient(135deg, var(--red-main), var(--red-hover));
+    color: var(--white-main);
     padding: 15px;
     border-radius: 10px;
     margin-bottom: 20px;
     text-align: center;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 2px 4px rgba(203, 9, 32, 0.3);
 }
 
 /* Contenu des onglets */
@@ -150,7 +170,7 @@
 }
 
 .cours-header {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--red-main), var(--red-hover));
 }
 
 .soutenance-header {
@@ -209,7 +229,7 @@
 }
 
 .cours-item .time-slot {
-    border-left-color: #667eea;
+    border-left-color: var(--red-main);
 }
 
 .soutenance-item .time-slot {

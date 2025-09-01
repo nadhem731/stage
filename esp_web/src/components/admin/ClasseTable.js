@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../api/axios';
+import AdminLayout from './AdminLayout';
 import '../../style/dashboard.css';
 import '../../style/etudient.css';
 import '../../style/table.css';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
-import Sidebar from '../Sidebar';
 
 const ClasseTable = () => {
   const [classes, setClasses] = useState([]);
@@ -23,7 +23,6 @@ const ClasseTable = () => {
 
   // Pagination
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8;
 
   const [search, setSearch] = useState('');
 
@@ -37,8 +36,10 @@ const ClasseTable = () => {
       setLoading(true);
       setError(null);
       const res = await axios.get('/api/classes');
+      console.log('DEBUG: Classes récupérées:', res.data);
       setClasses(res.data);
     } catch (err) {
+      console.error('Erreur lors du chargement des classes:', err);
       setError('Erreur lors du chargement des classes');
     } finally {
       setLoading(false);
@@ -191,13 +192,27 @@ const ClasseTable = () => {
   const currentGroupKey = groupKeys[page - 1];
   const paginatedClasses = grouped[currentGroupKey] || [];
 
+  if (loading) {
+    return (
+      <AdminLayout
+        activeMenu="ClasseTable"
+        setActiveMenu={() => {}}
+        loading={true}
+        loadingMessage="Chargement des classes..."
+      />
+    );
+  }
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar activeMenu="Classe" setActiveMenu={() => {}} />
-      <main style={{ 
+    <AdminLayout
+      activeMenu="ClasseTable"
+      setActiveMenu={() => {}}
+      title="Gestion des Classes"
+      subtitle="Gestion des classes et niveaux"
+    >
+      <div style={{ 
         flex: 1, 
         padding: '2rem', 
-        marginLeft: '280px',
         minWidth: 0,
         position: 'relative',
         zIndex: 1
@@ -276,12 +291,13 @@ const ClasseTable = () => {
             <span style={{ color: '#CB0920', fontWeight: 600, fontSize: '1.1rem' }}>{error}</span>
           </div>
         ) : (
-          <div style={{ marginTop: '2rem' }}>
-            {/* Champ de recherche déplacé dans le header */}
-            <table className="table-dashboard">
+          <div className="table-container" style={{ marginTop: '2rem' }}>
+            <table className="table-dashboard classes-table">
               <thead>
                 <tr>
-                  <th>NOM</th><th>Effectif</th><th>Action</th>
+                  <th>NOM</th>
+                  <th>Effectif</th>
+                  <th className="actions-column">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,10 +305,12 @@ const ClasseTable = () => {
                   <tr key={classe.idClasse}>
                     <td>{classe.nomClasse}</td>
                     <td>{classe.effectif || 0}</td>
-                    <td>
-                      <button style={{ background: '#007bff', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }} onClick={() => handleDetailClick(classe)}>Détail</button>
-                      <button style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }} onClick={() => handleEditClick(classe)}>Modifier</button>
-                      <button style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }} onClick={() => handleDelete(classe.idClasse)}>Supprimer</button>
+                    <td className="actions-cell">
+                      <div className="action-buttons">
+                        <button className="btn-detail" onClick={() => handleDetailClick(classe)}>Détail</button>
+                        <button className="btn-edit" onClick={() => handleEditClick(classe)}>Modifier</button>
+                        <button className="btn-delete" onClick={() => handleDelete(classe.idClasse)}>Supprimer</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -411,7 +429,7 @@ const ClasseTable = () => {
                     </h4>
                     {selectedClasseDetails.enseignants.length > 0 ? (
                       <div style={{ background: 'var(--white-main)', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: 'var(--shadow)', border: '1px solid var(--gray-light)' }}>
-                        <table className="table-dashboard">
+                        <table className="table-dashboard teachers-detail-table">
                           <thead>
                             <tr>
                               <th>Nom</th>
@@ -452,7 +470,7 @@ const ClasseTable = () => {
                     </h4>
                     {selectedClasseDetails.etudiants.length > 0 ? (
                       <div style={{ background: 'var(--white-main)', borderRadius: '0.75rem', overflow: 'hidden', boxShadow: 'var(--shadow)', border: '1px solid var(--gray-light)' }}>
-                        <table className="table-dashboard">
+                        <table className="table-dashboard students-detail-table">
                           <thead>
                             <tr>
                               <th>Nom</th>
@@ -490,8 +508,8 @@ const ClasseTable = () => {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

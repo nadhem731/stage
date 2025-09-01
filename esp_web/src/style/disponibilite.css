@@ -1,29 +1,405 @@
-/* Timetable styles specific to disponibilite page */
-.disponibilite-page .table-dashboard th,
-.disponibilite-page .table-dashboard td {
+/* Styles pour la page de disponibilité - Interface moderne */
+.disponibilite-container {
+    padding: 1rem;
+    max-width: none;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.disponibilite-header {
     text-align: center;
-    border: 1px solid #dee2e6;
+    margin-bottom: 3rem;
 }
 
-.disponibilite-page .table-dashboard td {
+.disponibilite-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--black-main);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--red-main), var(--red-hover));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.disponibilite-subtitle {
+    font-size: 1.1rem;
+    color: var(--gray-dark);
+    margin-bottom: 2rem;
+}
+
+.disponibilite-instructions {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid var(--red-main);
+}
+
+.instructions-title {
+    font-weight: 600;
+    color: var(--black-main);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.instructions-text {
+    color: var(--gray-dark);
+    font-size: 0.95rem;
+}
+
+/* Styles spécifiques pour la page de disponibilité - SOLUTION DÉFINITIVE */
+
+/* Élimination complète de l'espace entre sidebar et contenu */
+.dashboard-container {
+    display: flex !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+}
+
+/* S'assurer que la sidebar est toujours au-dessus */
+.sidebar {
+    z-index: 99999 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: var(--sidebar-width) !important;
+    height: 100vh !important;
+}
+
+.dashboard-main {
+    flex: 1 !important;
+    margin-left: var(--sidebar-width) !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    width: calc(100vw - var(--sidebar-width)) !important;
+    max-width: calc(100vw - var(--sidebar-width)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #f5f5f5 !important;
+    min-height: 100vh !important;
+    height: 100vh !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Supprimer la scrollbar rouge */
+.dashboard-main::-webkit-scrollbar {
+    display: none !important;
+}
+
+.dashboard-main {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+.dashboard-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 20px !important;
+    padding: 20px !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .dashboard-container {
+        flex-direction: column !important;
+        width: 100vw !important;
+    }
+    
+    .dashboard-main {
+        width: 100vw !important;
+        margin-left: 0 !important;
+        padding: 10px !important;
+        max-width: 100vw !important;
+    }
+    
+    .dashboard-content {
+        padding: 15px !important;
+        margin: 10px !important;
+        width: calc(100% - 20px) !important;
+    }
+}
+
+/* Styles pour le tableau de disponibilités */
+.dashboard-container .table-dashboard {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.dashboard-container .table-dashboard th,
+.dashboard-container .table-dashboard td {
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+    font-weight: 500;
+}
+
+.dashboard-container .table-dashboard th {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%);
+    color: #ffffff;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+}
+
+.dashboard-container .table-dashboard th:first-child {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%);
+    color: #ffffff;
+    font-weight: 600;
+    text-align: left;
+    padding-left: 1.5rem;
+}
+
+.dashboard-container .table-dashboard th:last-child {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%);
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+}
+
+.dashboard-container .table-dashboard tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+}
+
+.dashboard-container .table-dashboard tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
+}
+
+.dashboard-container .table-dashboard td {
     cursor: pointer;
-    background-color: #f8f9fa; /* Default unselected color */
+    transition: all 0.3s ease;
+    height: 80px;
+    vertical-align: middle;
+    position: relative;
 }
 
-.disponibilite-page .table-dashboard td.available {
-    background-color: #e26c6c; /* Green for available */
+/* Première colonne en rouge */
+.dashboard-container .table-dashboard tbody tr td:first-child {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    text-align: left;
+    padding-left: 1.5rem;
 }
 
-.disponibilite-page .table-dashboard .pause-header {
-    background-color: #6c757d;
-    color: white;
+.dashboard-container .table-dashboard td:last-child {
+    border-right: none;
+}
+
+.dashboard-container .table-dashboard tbody tr:hover td:not(.pause-cell) {
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+.dashboard-container .table-dashboard td:not(.pause-cell):hover {
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+.dashboard-container .table-dashboard td.available {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.3);
+}
+
+.dashboard-container .table-dashboard td.available::before {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-container .table-dashboard td.available::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* S'assurer que la première colonne est rouge */
+.dashboard-container .table-dashboard tbody tr td:first-child {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    text-align: left;
+    padding-left: 1.5rem;
+}
+
+.dashboard-container .table-dashboard .pause-header {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
     writing-mode: vertical-rl;
     text-orientation: mixed;
-    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
 }
 
-.disponibilite-page .table-dashboard .pause-cell {
-    background-color: #6c757d;
+.dashboard-container .table-dashboard .pause-cell {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     cursor: default;
+    position: relative;
+}
+
+.dashboard-container .table-dashboard .pause-cell::before {
+    content: "☕";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    opacity: 0.6;
+}
+
+.dashboard-container .submit-btn {
+    background: linear-gradient(135deg, #CB0920 0%, #e53935 100%);
+    color: #ffffff;
     border: none;
+    padding: 16px 40px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 16px rgba(203, 9, 32, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-container .submit-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.dashboard-container .submit-btn:hover::before {
+    left: 100%;
+}
+
+.dashboard-container .submit-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(203, 9, 32, 0.4);
+}
+
+.dashboard-container .submit-btn:active {
+    transform: translateY(-1px);
+}
+
+.dashboard-container h2 {
+    color: #CB0920;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-align: center;
+    border-bottom: 3px solid #CB0920;
+    padding-bottom: 1rem;
+}
+
+/* Responsive design pour le tableau */
+@media (max-width: 768px) {
+    .dashboard-container .table-dashboard {
+        font-size: 0.9rem;
+    }
+    
+    .dashboard-container .table-dashboard th,
+    .dashboard-container .table-dashboard td {
+        padding: 0.5rem;
+    }
+    
+    .dashboard-container h2 {
+        font-size: 1.5rem;
+    }
+}
+
+.dashboard-container h2 {
+    color: var(--black-main);
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.availability-summary {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid #2196f3;
+}
+
+.summary-title {
+    font-weight: 600;
+    color: var(--black-main);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.summary-item {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.summary-day {
+    font-weight: 600;
+    color: var(--black-main);
+    margin-bottom: 0.5rem;
+}
+
+.summary-slots {
+    color: var(--gray-dark);
+    font-size: 0.9rem;
 }

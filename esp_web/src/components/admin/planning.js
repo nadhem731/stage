@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import Sidebar from '../Sidebar';
+import AdminLayout from './AdminLayout';
 import '../../style/etudient.css';
 import '../../style/table.css';
 import '../../style/dashboard.css';
 import api from '../../api/axios';
-import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 function Planning() {
@@ -15,12 +14,9 @@ function Planning() {
   const [showSuggestions, setShowSuggestions] = useState(false); // Pour afficher/masquer les suggestions
   const [groupedPlanning, setGroupedPlanning] = useState({}); // Pour stocker le planning regroupé par jour
   const [planningByClass, setPlanningByClass] = useState({}); // Pour stocker le planning regroupé par classe
-  const [viewMode, setViewMode] = useState('day'); // 'day' ou 'class'
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [selectedSoutenance, setSelectedSoutenance] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedClassStudents, setSelectedClassStudents] = useState([]);
-  const [selectedClassName, setSelectedClassName] = useState('');
   const [planningStatus, setPlanningStatus] = useState('en_cours'); // 'en_cours' ou 'valide'
   const [currentPlanningData, setCurrentPlanningData] = useState(null); // Pour stocker les données brutes du planning
   const [timeUntilSunday, setTimeUntilSunday] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -38,6 +34,15 @@ function Planning() {
   const [soutenanceViewMode, setSoutenanceViewMode] = useState('day');
   const [groupedSoutenances, setGroupedSoutenances] = useState({});
   const [showStudentList, setShowStudentList] = useState(true);
+
+  const [showMicrosoftOptions, setShowMicrosoftOptions] = useState(false);
+  const [microsoftOptions, setMicrosoftOptions] = useState({
+    calendar: true,
+    teams: false,
+    notifications: false
+  });
+  const [microsoftSyncResults, setMicrosoftSyncResults] = useState(null);
+  const [microsoftSyncLoading, setMicrosoftSyncLoading] = useState(false);
 
 
   // Charger le planning sauvegardé au démarrage
@@ -66,6 +71,7 @@ function Planning() {
     };
     
     fetchPlanningStatus();
+    fetchMicrosoftStatus();
     
     if (savedPlanning) {
       try {
@@ -117,7 +123,6 @@ function Planning() {
       }
     }
     
-    // Charger les données des soutenances sauvegardées
     const savedSoutenances = localStorage.getItem('planningSoutenances');
     const savedEtudiants = localStorage.getItem('etudiants');
     const savedSelectedEtudiants = localStorage.getItem('selectedEtudiants');
@@ -158,6 +163,282 @@ function Planning() {
       }
     }
   }, []);
+
+  // Fonction pour récupérer le statut Microsoft
+  const fetchMicrosoftStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await api.get('/api/microsoft/status', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // setMicrosoftStatus(response.data); // Variable removed
+    } catch (error) {
+      console.error('Erreur lors de la récupération du statut Microsoft:', error);
+    }
+  };
+
+  // Fonction pour synchronisation en masse vers Microsoft
+  const handleBulkSyncToMicrosoft = async () => {
+    if (!currentPlanningData || currentPlanningData.length === 0) {
+      setMicrosoftSyncResults({
+        success: false,
+        error: 'Aucun planning à synchroniser'
+      });
+      return;
+    }
+
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post('/api/microsoft/calendar/sync-bulk', {
+        plannings: currentPlanningData,
+        options: microsoftOptions
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`${currentPlanningData.length} cours synchronisés avec Microsoft Calendar`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de synchronisation'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour synchroniser un planning individuel
+
+  // Fonction pour créer une réunion Teams
+  const handleCreateTeamsMeeting = async (planning) => {
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/api/microsoft/teams/create-meeting', planning, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`Réunion Teams créée pour ${planning.matiere}`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la création de la réunion:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de création de réunion'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour synchroniser une classe complète
+  const handleSyncClassToMicrosoft = async (className, plannings) => {
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/api/microsoft/calendar/sync-bulk', {
+        plannings: plannings,
+        options: { ...microsoftOptions, className }
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`${plannings.length} cours de la classe ${className} synchronisés`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de synchronisation'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour créer des réunions Teams pour une classe
+  const handleCreateClassTeamsMeetings = async (className, plannings) => {
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const promises = plannings.map(planning => 
+        api.post('/api/microsoft/teams/create-meeting', planning, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      );
+      
+      await Promise.all(promises);
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`${plannings.length} réunions Teams créées pour la classe ${className}`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la création des réunions:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de création de réunions'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour synchroniser toutes les soutenances
+  const handleBulkSyncSoutenancesToMicrosoft = async () => {
+    if (!planningSoutenances || planningSoutenances.length === 0) {
+      setMicrosoftSyncResults({
+        success: false,
+        error: 'Aucune soutenance à synchroniser'
+      });
+      return;
+    }
+
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post('/api/microsoft/calendar/sync-soutenances-bulk', {
+        soutenances: planningSoutenances,
+        options: microsoftOptions
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`${planningSoutenances.length} soutenances synchronisées avec Microsoft Calendar`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de synchronisation'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour synchroniser une soutenance individuelle
+  const handleSyncSoutenanceToMicrosoft = async (soutenance) => {
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/api/microsoft/calendar/sync-soutenance', soutenance, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`Soutenance de ${soutenance.nom_etudiant} synchronisée avec Microsoft Calendar`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de synchronisation'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour créer une réunion Teams pour une soutenance
+  const handleCreateSoutenanceTeamsMeeting = async (soutenance) => {
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/api/microsoft/teams/create-soutenance-meeting', soutenance, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`Réunion Teams créée pour la soutenance de ${soutenance.nom_etudiant}`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la création de la réunion:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de création de réunion'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour créer des réunions Teams pour toutes les soutenances
+  const handleCreateAllSoutenancesTeamsMeetings = async () => {
+    if (!planningSoutenances || planningSoutenances.length === 0) {
+      setMicrosoftSyncResults({
+        success: false,
+        error: 'Aucune soutenance pour créer des réunions'
+      });
+      return;
+    }
+
+    setMicrosoftSyncLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const promises = planningSoutenances.map(soutenance => 
+        api.post('/api/microsoft/teams/create-soutenance-meeting', soutenance, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      );
+      
+      await Promise.all(promises);
+      
+      setMicrosoftSyncResults({
+        success: true,
+        details: [`${planningSoutenances.length} réunions Teams créées pour les soutenances`]
+      });
+    } catch (error) {
+      console.error('Erreur lors de la création des réunions:', error);
+      setMicrosoftSyncResults({
+        success: false,
+        error: error.response?.data?.message || 'Erreur de création de réunions'
+      });
+    } finally {
+      setMicrosoftSyncLoading(false);
+    }
+  };
+
+  // Fonction pour gérer la synchronisation avec options
+  const handleMicrosoftSync = async () => {
+    setShowMicrosoftOptions(false);
+    
+    if (microsoftOptions.calendar) {
+      await handleBulkSyncToMicrosoft();
+    }
+    
+    if (microsoftOptions.teams && currentPlanningData) {
+      for (const planning of currentPlanningData) {
+        await handleCreateTeamsMeeting(planning);
+      }
+    }
+  };
+
+  // Nettoyer les résultats Microsoft après 5 secondes
+  React.useEffect(() => {
+    if (microsoftSyncResults) {
+      const timer = setTimeout(() => {
+        setMicrosoftSyncResults(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [microsoftSyncResults]);
+
 
   // Fonction pour calculer le temps jusqu'au prochain dimanche
   const calculateTimeUntilSunday = () => {
@@ -730,7 +1011,7 @@ function Planning() {
       const response = await fetch('http://localhost:5001/generate-planning', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestData)
       });
@@ -905,17 +1186,12 @@ function Planning() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f7f7f7' }}>
-      <Sidebar activeMenu="Planning" setActiveMenu={() => {}} />
-      <main style={{ 
-        flex: 1, 
-        padding: '2rem', 
-        marginLeft: '280px',
-        minWidth: 0,
-        position: 'relative',
-        zIndex: 1
-      }}>
-        <div className="dashboard-content">
+    <AdminLayout
+      activeMenu="Planning"
+      setActiveMenu={() => {}}
+      title="Gestion du Planning"
+      subtitle="Génération et gestion des plannings de cours et soutenances"
+    >
 
           <div className="tabs" style={{ marginBottom: '2rem', borderBottom: '1px solid #ddd', display: 'flex' }}>
             <button 
@@ -1090,22 +1366,28 @@ function Planning() {
                     {loading ? 'Génération en cours...' : 'Générer Planning'}
                   </button>
                   {Object.keys(groupedPlanning).length > 0 && (
-                    <button
-                      onClick={handleValidatePlanning}
-                      style={{
-                        background: planningStatus === 'valide' ? '#6c757d' : '#28a745',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '10px 20px',
-                        fontWeight: 600,
-                        cursor: planningStatus === 'valide' ? 'not-allowed' : 'pointer',
-                        opacity: planningStatus === 'valide' ? 0.6 : 1
-                      }}
-                      disabled={planningStatus === 'valide'}
-                    >
-                      {planningStatus === 'valide' ? 'Planning Validé' : 'Valider le Planning'}
-                    </button>
+                    <>
+                      <button
+                        onClick={handleValidatePlanning}
+                        style={{
+                          background: planningStatus === 'valide' ? '#6c757d' : '#28a745',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 6,
+                          padding: '10px 20px',
+                          fontWeight: 600,
+                          cursor: planningStatus === 'valide' ? 'not-allowed' : 'pointer',
+                          opacity: planningStatus === 'valide' ? 0.6 : 1
+                        }}
+                        disabled={planningStatus === 'valide'}
+                      >
+                        {planningStatus === 'valide' ? 'Planning Validé' : 'Valider le Planning'}
+                      </button>
+                      
+                      
+                          
+                      
+                    </>
                   )}
                 </div>
               </div>
@@ -1119,6 +1401,173 @@ function Planning() {
                   fontWeight: 500
                 }}>
                   {message}
+                </div>
+              )}
+
+              {/* Modal pour les options de synchronisation Microsoft */}
+              {showMicrosoftOptions && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000
+                }}>
+                  <div style={{
+                    background: 'var(--white-main)',
+                    borderRadius: '0.75rem',
+                    padding: '2rem',
+                    maxWidth: '500px',
+                    width: '90%',
+                    boxShadow: 'var(--shadow-hover)',
+                    border: '1px solid var(--gray-light)'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '1.5rem',
+                      paddingBottom: '1rem',
+                      borderBottom: '2px solid #f0f0f0'
+                    }}>
+                      <div style={{
+                        background: 'linear-gradient(135deg, #0078d4, #106ebe)',
+                        borderRadius: '50%',
+                        width: '40px',
+                        height: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '12px'
+                      }}>
+                        🔄
+                      </div>
+                      <h3 style={{
+                        margin: 0,
+                        color: 'var(--black-main)',
+                        fontSize: '1.4rem',
+                        fontWeight: '700'
+                      }}>
+                        Synchronisation Microsoft
+                      </h3>
+                      <button
+                        onClick={() => setShowMicrosoftOptions(false)}
+                        style={{
+                          marginLeft: 'auto',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '1.5rem',
+                          cursor: 'pointer',
+                          color: '#666',
+                          padding: '5px'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ color: 'var(--black-main)', marginBottom: '1rem' }}>Options de synchronisation :</h4>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={microsoftOptions.calendar}
+                            onChange={(e) => setMicrosoftOptions(prev => ({ ...prev, calendar: e.target.checked }))}
+                          />
+                          <span>📅 Synchroniser avec Microsoft Calendar</span>
+                        </label>
+                        
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={microsoftOptions.teams}
+                            onChange={(e) => setMicrosoftOptions(prev => ({ ...prev, teams: e.target.checked }))}
+                          />
+                          <span>🎥 Créer des réunions Teams</span>
+                        </label>
+                        
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={microsoftOptions.notifications}
+                            onChange={(e) => setMicrosoftOptions(prev => ({ ...prev, notifications: e.target.checked }))}
+                          />
+                          <span>📧 Envoyer des notifications par email</span>
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => setShowMicrosoftOptions(false)}
+                        style={{
+                          background: '#6c757d',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '10px 20px',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Annuler
+                      </button>
+                      
+                      <button
+                        onClick={handleMicrosoftSync}
+                        disabled={microsoftSyncLoading}
+                        style={{
+                          background: microsoftSyncLoading ? '#ccc' : '#0078d4',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '10px 20px',
+                          cursor: microsoftSyncLoading ? 'not-allowed' : 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {microsoftSyncLoading ? 'Synchronisation...' : 'Synchroniser'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Affichage des résultats de synchronisation Microsoft */}
+              {microsoftSyncResults && (
+                <div style={{
+                  padding: '1rem',
+                  marginBottom: '1rem',
+                  borderRadius: 6,
+                  background: microsoftSyncResults.success ? '#e8f5e9' : '#ffebee',
+                  color: microsoftSyncResults.success ? '#2e7d32' : '#c62828',
+                  fontWeight: 500,
+                  border: `1px solid ${microsoftSyncResults.success ? '#4caf50' : '#f44336'}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <span>{microsoftSyncResults.success ? '✅' : '❌'}</span>
+                    <strong>{microsoftSyncResults.success ? 'Synchronisation réussie' : 'Erreur de synchronisation'}</strong>
+                  </div>
+                  
+                  {microsoftSyncResults.details && (
+                    <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                      {microsoftSyncResults.details.map((detail, index) => (
+                        <div key={index}>• {detail}</div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {microsoftSyncResults.error && (
+                    <div style={{ fontSize: '0.9rem', marginTop: '10px' }}>
+                      Erreur: {microsoftSyncResults.error}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1476,30 +1925,16 @@ function Planning() {
                           border: '1px solid var(--gray-light)',
                           boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                         }}>
-                          <table style={{ 
-                            width: '100%', 
-                            borderCollapse: 'collapse',
+                          <table className="table-dashboard planning-table" style={{ 
                             fontSize: '0.9rem'
                           }}>
                             <thead>
                               <tr style={{ background: 'var(--red-main)' }}>
-                                <th style={{ 
-                                  padding: '1rem', 
-                                  color: 'white', 
-                                  fontWeight: '600',
-                                  border: '1px solid rgba(255,255,255,0.2)',
-                                  minWidth: '120px'
-                                }}>
+                                <th className="planning-time-column">
                                   ⏰ Horaires
                                 </th>
                                 {jours.map(jour => (
-                                  <th key={jour} style={{ 
-                                    padding: '1rem', 
-                                    color: 'white', 
-                                    fontWeight: '600',
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    minWidth: '180px'
-                                  }}>
+                                  <th key={jour} className="planning-day-column">
                                     📅 {jour}
                                   </th>
                                 ))}
@@ -1645,6 +2080,9 @@ function Planning() {
                                                 EN LIGNE
                                               </div>
                                             )}
+                                            
+                                            
+                                            
                                           </div>
                                         ) : (
                                           <div style={{ 
@@ -1670,6 +2108,32 @@ function Planning() {
                             </tbody>
                           </table>
                         </div>
+                        
+                        {/* Actions Microsoft pour la classe */}
+                        {planningStatus === 'valide' && (
+                          <div style={{
+                            padding: '1rem',
+                            background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
+                            borderTop: '1px solid #dee2e6',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '10px'
+                          }}>
+                           
+                              
+                            
+                            
+                            <div style={{
+                              display: 'flex',
+                              gap: '8px'
+                            }}>
+                             
+                              
+                            </div>
+                          </div>
+                        )}
                         
                         {/* Légende */}
                         <div style={{ padding: '1rem', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
@@ -1941,6 +2405,95 @@ function Planning() {
                     </button>
                   </div>
 
+                  {/* Boutons de synchronisation Microsoft pour toutes les soutenances */}
+                  {planningSoutenances.length > 0 && (
+                    <div style={{
+                      marginBottom: '1rem',
+                      padding: '1rem',
+                      background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
+                      borderRadius: '8px',
+                      border: '1px solid #dee2e6'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '10px'
+                      }}>
+                        <span style={{
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          color: 'var(--black-main)'
+                        }}>
+                          🔄 Synchronisation Microsoft - Toutes les soutenances:
+                        </span>
+                        
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={handleBulkSyncSoutenancesToMicrosoft}
+                            disabled={microsoftSyncLoading}
+                            style={{
+                              background: microsoftSyncLoading ? '#ccc' : '#0078d4',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              cursor: microsoftSyncLoading ? 'not-allowed' : 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            {microsoftSyncLoading ? (
+                              <>
+                                <span>⏳</span>
+                                Sync...
+                              </>
+                            ) : (
+                              <>
+                                <span>📅</span>
+                                Sync Toutes
+                              </>
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={handleCreateAllSoutenancesTeamsMeetings}
+                            disabled={microsoftSyncLoading}
+                            style={{
+                              background: microsoftSyncLoading ? '#ccc' : '#6264a7',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              cursor: microsoftSyncLoading ? 'not-allowed' : 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            {microsoftSyncLoading ? (
+                              <>
+                                <span>⏳</span>
+                                Teams...
+                              </>
+                            ) : (
+                              <>
+                                <span>🎥</span>
+                                Teams Toutes
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Bouton pour masquer/démasquer la liste */}
                   <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
                     <button
@@ -2333,8 +2886,56 @@ function Planning() {
                             </div>
                             <div style={{
                               marginTop: '1rem',
-                              textAlign: 'right'
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '10px'
                             }}>
+                              {/* Boutons de synchronisation Microsoft pour soutenances */}
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleSyncSoutenanceToMicrosoft(soutenance)}
+                                  style={{
+                                    background: '#0078d4',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="Synchroniser avec Microsoft Calendar"
+                                >
+                                  <span>📅</span>
+                                  Calendar
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleCreateSoutenanceTeamsMeeting(soutenance)}
+                                  style={{
+                                    background: '#6264a7',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="Créer réunion Teams"
+                                >
+                                  <span>🎥</span>
+                                  Teams
+                                </button>
+                              </div>
+                              
                               <button
                                 onClick={() => {
                                   setSelectedSoutenance(soutenance);
@@ -2373,8 +2974,6 @@ function Planning() {
               )}
             </div>
           )}
-        </div>
-      </main>
 
       {/* Modal pour afficher les détails de la soutenance */}
       {showDetailModal && selectedSoutenance && (
@@ -2650,7 +3249,7 @@ function Planning() {
             border: '1px solid var(--gray-light)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: 'var(--black-main)' }}>Étudiants de la classe: {selectedClassName}</h3>
+              <h3 style={{ margin: 0, color: 'var(--black-main)' }}>Étudiants de la classe</h3>
               <button
                 onClick={() => setShowStudentModal(false)}
                 style={{
@@ -2666,30 +3265,9 @@ function Planning() {
             </div>
             
             <div style={{ maxHeight: '400px', overflow: 'auto' }}>
-              {selectedClassStudents.length > 0 ? (
-                <table className="table-dashboard">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Nom</th>
-                      <th>Prénom</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedClassStudents.map((student, index) => (
-                      <tr key={index}>
-                        <td>{student.idUser || student.id}</td>
-                        <td>{student.nom}</td>
-                        <td>{student.prenom}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
-                  Aucun étudiant trouvé pour cette classe
-                </p>
-              )}
+              <p style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
+                Fonctionnalité temporairement désactivée
+              </p>
             </div>
             
             <div style={{ marginTop: '1rem', textAlign: 'center' }}>
@@ -3094,8 +3672,8 @@ function Planning() {
         </div>
       )}
 
-    </div>
+    </AdminLayout>
   );
-}
+};
 
 export default Planning;

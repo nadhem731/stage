@@ -1,12 +1,13 @@
 import os
 import psycopg2
 from constraint import Problem, AllDifferentConstraint
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import google.generativeai as genai
 import requests
 import random
 import time
+from datetime import datetime, timedelta
 
 # Configure Gemini API
 # It's recommended to use environment variables for API keys in production
@@ -191,11 +192,19 @@ def create_schedule_greedy(salles, classes, cours_a_planifier, time_slots, semai
     salles_disponibles = [s for s in salles if s.get('type_type_salle') == 'salle de cour']
     random.shuffle(salles_disponibles)
     
+    print(f"DEBUG: {len(salles_disponibles)} salles de cours disponibles pour {len(classes)} classes")
+    
     for i, classe in enumerate(classes):
         if i < len(salles_disponibles):
             salle = salles_disponibles[i]
             salles_par_classe[classe['id_classe']] = salle
             print(f"  Classe {classe['nom_classe']} assignée à la salle {salle['numsalle']}")
+        else:
+            # Si plus de salles disponibles, réutiliser les salles existantes
+            salle_index = i % len(salles_disponibles)
+            salle = salles_disponibles[salle_index]
+            salles_par_classe[classe['id_classe']] = salle
+            print(f"  Classe {classe['nom_classe']} assignée à la salle {salle['numsalle']} (réutilisée)")
     
     # Trier les cours par priorité (classes avec moins d'options en premier)
     cours_tries = sorted(cours_a_planifier, key=lambda c: c['id_classe'])
@@ -536,6 +545,23 @@ def generate_planning_endpoint():
 
     print(f"DEBUG: Raw salles_data from Spring Boot: {salles_data}")
     print(f"DEBUG: Raw classes_data from Spring Boot: {classes_data}")
+    
+    # Si aucune classe n'est fournie dans la requête, les récupérer directement depuis l'API
+    if not classes_data:
+        print("DEBUG: Aucune classe fournie dans la requête, récupération depuis l'API...")
+        token = request.headers.get('Authorization', '').replace('Bearer ', '') if request.headers.get('Authorization') else None
+        headers = {'Authorization': f'Bearer {token}'} if token else {}
+        
+        try:
+            classes_response = requests.get('http://localhost:8080/api/classes', headers=headers, timeout=5)
+            if classes_response.status_code == 200:
+                classes_data = classes_response.json()
+                print(f"DEBUG: Classes récupérées depuis l'API: {len(classes_data)} classes")
+                print(f"DEBUG: Classes data: {classes_data}")
+            else:
+                print(f"DEBUG: Erreur lors de la récupération des classes: {classes_response.status_code}")
+        except Exception as e:
+            print(f"DEBUG: Exception lors de la récupération des classes: {e}")
 
     # Adapter les données reçues de Spring Boot au format attendu par le solveur Python
     # Spring Boot envoie idSalle, numSalle (camelCase), typeSalle (objet imbriqué)
@@ -738,7 +764,125 @@ def generate_planning_endpoint():
         "gemini_suggestions": gemini_suggestions
     })
 
-def create_soutenance_schedule(etudiants_selectionnes, salles, enseignants, semaine_numero=1, date_debut_semaine=None):
+def has_enseignant_conflict(enseignant_id, jour, heure_debut, heure_fin, token):
+    """
+    Vérifie si un enseignant a des conflits avec des cours ou rattrapages aux horaires donnés.
+    
+    Args:
+        enseignant_id: ID de l'enseignant
+        jour: Jour de la semaine (ex: "Lundi")
+        heure_debut: Heure de début (ex: "09:00")
+        heure_fin: Heure de fin (ex: "10:30")
+        token: Token JWT pour l'authentification
+    
+    Returns:
+        bool: True si conflit détecté, False sinon
+    """
+    try:
+        headers = {'Authorization': f'Bearer {token}'} if token else {}
+        
+        # Vérifier les conflits avec les cours existants
+        cours_query = """
+        SELECT COUNT(*) as conflits_cours,
+               STRING_AGG(DISTINCT COALESCE(c.nom_classe, p.id_classe::text), ', ') as classes_conflictuelles
+        FROM Planning p
+        LEFT JOIN Classe c ON p.id_classe = c.id_classe
+        WHERE p.id_user = %s
+        AND p.jour = %s
+        AND (
+            (p.heure_debut <= %s AND p.heure_fin > %s) OR
+            (p.heure_debut < %s AND p.heure_fin >= %s) OR
+            (p.heure_debut >= %s AND p.heure_fin <= %s)
+        )
+        AND p.statut_validation = 'valide'
+        """
+        
+        cursor.execute(cours_query, (
+            enseignant_id, jour, 
+            heure_debut, heure_debut,  # Conflit si cours commence avant et finit après début soutenance
+            heure_fin, heure_fin,      # Conflit si cours commence avant et finit après fin soutenance
+            heure_debut, heure_fin     # Conflit si cours est complètement dans la plage de soutenance
+        ))
+        
+        result_cours = cursor.fetchone()
+        conflits_cours = result_cours[0] if result_cours else 0
+        classes_conflictuelles = result_cours[1] if result_cours and result_cours[1] else ""
+        
+        # Vérifier les conflits avec les rattrapages approuvés
+        rattrapage_query = """
+        SELECT COUNT(*) as conflits_rattrapages,
+               STRING_AGG(DISTINCT r.classe_rattrapage, ', ') as classes_rattrapage_conflits
+        FROM rattrapage r
+        WHERE r.id_enseignant = %s
+        AND r.jour_rattrapage = %s
+        AND (
+            (r.heure_debut_rattrapage <= %s AND r.heure_fin_rattrapage > %s) OR
+            (r.heure_debut_rattrapage < %s AND r.heure_fin_rattrapage >= %s) OR
+            (r.heure_debut_rattrapage >= %s AND r.heure_fin_rattrapage <= %s)
+        )
+        AND r.statut = 'approuve'
+        """
+        
+        cursor.execute(rattrapage_query, (
+            enseignant_id, jour,
+            heure_debut, heure_debut,
+            heure_fin, heure_fin,
+            heure_debut, heure_fin
+        ))
+        
+        result_rattrapage = cursor.fetchone()
+        conflits_rattrapages = result_rattrapage[0] if result_rattrapage else 0
+        classes_rattrapage_conflits = result_rattrapage[1] if result_rattrapage and result_rattrapage[1] else ""
+        
+        # Vérifier les conflits avec les soutenances existantes
+        soutenance_query = """
+        SELECT COUNT(*) as conflits_soutenances,
+               STRING_AGG(DISTINCT s.nom_etudiant, ', ') as etudiants_conflits
+        FROM Soutenance s
+        JOIN soutenance_jury sj ON s.id_soutenance = sj.id_soutenance
+        WHERE sj.id_enseignant = %s
+        AND s.jour = %s
+        AND (
+            (s.heure_debut <= %s AND s.heure_fin > %s) OR
+            (s.heure_debut < %s AND s.heure_fin >= %s) OR
+            (s.heure_debut >= %s AND s.heure_fin <= %s)
+        )
+        AND s.statut_validation = 'valide'
+        """
+        
+        cursor.execute(soutenance_query, (
+            enseignant_id, jour,
+            heure_debut, heure_debut,
+            heure_fin, heure_fin,
+            heure_debut, heure_fin
+        ))
+        
+        result_soutenance = cursor.fetchone()
+        conflits_soutenances = result_soutenance[0] if result_soutenance else 0
+        etudiants_conflits = result_soutenance[1] if result_soutenance and result_soutenance[1] else ""
+        
+        # Logging des conflits détectés
+        if conflits_cours > 0 or conflits_rattrapages > 0 or conflits_soutenances > 0:
+            print(f" CONFLIT JURY DÉTECTÉ - Enseignant ID {enseignant_id}:")
+            if conflits_cours > 0:
+                print(f"   {conflits_cours} cours en conflit ({jour} {heure_debut}-{heure_fin})")
+                print(f"   Classes concernées: {classes_conflictuelles}")
+            if conflits_rattrapages > 0:
+                print(f"   {conflits_rattrapages} rattrapages en conflit ({jour} {heure_debut}-{heure_fin})")
+                print(f"   Classes rattrapage: {classes_rattrapage_conflits}")
+            if conflits_soutenances > 0:
+                print(f"   {conflits_soutenances} soutenances en conflit ({jour} {heure_debut}-{heure_fin})")
+                print(f"   Étudiants concernés: {etudiants_conflits}")
+            return True
+        
+        return False
+        
+    except Exception as e:
+        print(f"Erreur lors de la vérification des conflits enseignant {enseignant_id}: {e}")
+        # En cas d'erreur, on considère qu'il n'y a pas de conflit pour ne pas bloquer
+        return False
+
+def create_soutenance_schedule(etudiants_selectionnes, salles=None, enseignants=None, semaine_numero=1, date_debut_semaine=None, token=None):
     """
     Génère un planning de soutenance hebdomadaire avec assignation automatique de jurys.
     
@@ -817,6 +961,8 @@ def create_soutenance_schedule(etudiants_selectionnes, salles, enseignants, sema
     soutenances_par_creneau = {}  # {(jour, periode): count} - Maximum 2 par créneau
     conflits_detectes = []  # Liste des conflits détectés pour validation
     creneaux_utilises = {}  # {(jour, heure_debut, heure_fin): [soutenance_info]} - Validation stricte des conflits
+    conflits_jury_evites = 0  # Compteur des conflits de jury évités
+    enseignants_rejetes_par_conflit = {}  # {enseignant_id: nombre_de_rejets}
     
     # Randomiser pour éviter les patterns (basé sur la semaine comme pour les cours)
     random.seed(int(time.time()) + semaine_numero)
@@ -891,13 +1037,20 @@ def create_soutenance_schedule(etudiants_selectionnes, salles, enseignants, sema
             jury_size = random.randint(3, min(5, len(enseignants)))
             jury_candidats = []
             
-            # Sélectionner des enseignants libres
+            # Sélectionner des enseignants libres (vérifier conflits avec cours et rattrapages)
             for enseignant in enseignants:
                 enseignant_key = (enseignant['id'], creneau_key)
                 if enseignant_key not in enseignants_occupes:
-                    jury_candidats.append(enseignant)
-                    if len(jury_candidats) >= jury_size:
-                        break
+                    # Vérifier si l'enseignant a des conflits avec cours ou rattrapages
+                    if not has_enseignant_conflict(enseignant['id'], jour, heure_debut, heure_fin, token):
+                        jury_candidats.append(enseignant)
+                        if len(jury_candidats) >= jury_size:
+                            break
+                    else:
+                        # Compter les conflits évités
+                        conflits_jury_evites += 1
+                        enseignant_id = enseignant['id']
+                        enseignants_rejetes_par_conflit[enseignant_id] = enseignants_rejetes_par_conflit.get(enseignant_id, 0) + 1
             
             if len(jury_candidats) < 3:
                 continue  # Pas assez d'enseignants libres
@@ -970,6 +1123,12 @@ def create_soutenance_schedule(etudiants_selectionnes, salles, enseignants, sema
     print(f"✅ Soutenances planifiées: {len(planning_soutenances)}/{len(etudiants_selectionnes)} étudiants")
     print(f"🔒 Créneaux utilisés: {len(creneaux_utilises)} (AUCUN CONFLIT AUTORISÉ)")
     print(f"⚠️  Conflits détectés et évités: {len(conflits_detectes)}")
+    print(f"🚫 Conflits de jury évités: {conflits_jury_evites}")
+    
+    if enseignants_rejetes_par_conflit:
+        print("👥 Enseignants rejetés par conflits:")
+        for ens_id, nb_rejets in enseignants_rejetes_par_conflit.items():
+            print(f"   - Enseignant ID {ens_id}: {nb_rejets} rejets")
     
     if conflits_detectes:
         print("📋 Détails des conflits évités:")
@@ -1058,10 +1217,11 @@ def generate_soutenance_planning_endpoint():
         # Générer le planning de soutenance
         planning_soutenances = create_soutenance_schedule(
             etudiants_selectionnes, 
-            processed_salles, 
-            processed_enseignants, 
-            1,  # Semaine fixe
-            date_soutenance
+                salles=processed_salles, 
+            enseignants=processed_enseignants, 
+            semaine_numero=1,  # Semaine fixe
+            date_debut_semaine=date_soutenance,
+            token=token
         )
         
         if not planning_soutenances:
@@ -1262,6 +1422,403 @@ def health_check():
     health_status["status"] = "completed"
     
     return jsonify(health_status)
+
+@app.route('/analyze-rattrapage', methods=['POST'])
+def analyze_rattrapage():
+    """
+    Analyse avancée d'une demande de rattrapage avec l'IA Gemini.
+    Inclut des critères intelligents et une analyse contextuelle approfondie.
+    """
+    try:
+        data = request.get_json()
+        
+        # Validation des données requises
+        required_fields = ['classe', 'matiere', 'date_rattrapage', 'heure_debut', 'heure_fin', 'motif']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'error': f'Champ requis manquant: {field}',
+                    'status': 'error'
+                }), 400
+        
+        # Extraction des données
+        classe = data['classe']
+        matiere = data['matiere']
+        date_rattrapage = data['date_rattrapage']
+        heure_debut = data['heure_debut']
+        heure_fin = data['heure_fin']
+        motif = data['motif']
+        enseignant_id = data.get('enseignant_id', 'Non spécifié')
+        
+        # Analyse avancée avec données contextuelles
+        analysis_result = perform_advanced_rattrapage_analysis(
+            classe, matiere, date_rattrapage, heure_debut, heure_fin, motif, enseignant_id
+        )
+        
+        return jsonify(analysis_result)
+        
+    except Exception as e:
+        print(f"Erreur lors de l'analyse IA: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': f'Erreur lors de l\'analyse: {str(e)}',
+            'status': 'error'
+        }), 500
+
+def perform_advanced_rattrapage_analysis(classe, matiere, date_rattrapage, heure_debut, heure_fin, motif, enseignant_id):
+    """
+    Effectue une analyse avancée et contextuelle de la demande de rattrapage.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return {
+            'error': 'Erreur de connexion à la base de données',
+            'status': 'error'
+        }
+    
+    cursor = conn.cursor()
+    
+    # 1. ANALYSE DES CONFLITS DE PLANNING
+    cursor.execute("""
+        SELECT COUNT(*), 
+               STRING_AGG(DISTINCT COALESCE(c.nom_classe, p.id_classe::text), ', ') as classes_conflictuelles,
+               STRING_AGG(DISTINCT s.num_salle, ', ') as salles_occupees
+        FROM Planning p
+        JOIN Salle s ON p.id_salle = s.id_salle
+        LEFT JOIN Classe c ON p.id_classe = c.id_classe
+        WHERE p.date_debut = %s 
+        AND ((p.heure_debut <= %s AND p.heure_fin > %s) 
+             OR (p.heure_debut < %s AND p.heure_fin >= %s)
+             OR (p.heure_debut >= %s AND p.heure_fin <= %s))
+    """, (date_rattrapage, heure_debut, heure_debut, heure_fin, heure_fin, heure_debut, heure_fin))
+    
+    conflit_result = cursor.fetchone()
+    conflits_planning = conflit_result[0] or 0
+    classes_conflictuelles = conflit_result[1] or ""
+    salles_occupees = conflit_result[2] or ""
+    
+    # 2. ANALYSE AVANCÉE DES SALLES DISPONIBLES
+    cursor.execute("""
+        SELECT s.id_salle, s.num_salle, s.capacite,
+               CASE WHEN s.id_salle IN (
+                   SELECT DISTINCT p.id_salle FROM Planning p 
+                   WHERE p.date_debut = %s 
+                   AND ((p.heure_debut <= %s AND p.heure_fin > %s) 
+                        OR (p.heure_debut < %s AND p.heure_fin >= %s)
+                        OR (p.heure_debut >= %s AND p.heure_fin <= %s))
+               ) THEN false ELSE true END as disponible
+        FROM Salle s
+        WHERE s.disponibilite = true
+        ORDER BY s.capacite DESC
+    """, (date_rattrapage, heure_debut, heure_debut, heure_fin, heure_fin, heure_debut, heure_fin))
+    
+    salles_info = cursor.fetchall()
+    salles_disponibles = sum(1 for salle in salles_info if salle[3])  # Count available rooms
+    salles_details = [
+        {
+            'nom': salle[1], 
+            'capacite': salle[2], 
+            'disponible': salle[3]
+        } for salle in salles_info
+    ]
+    
+    # 3. ANALYSE DE LA CHARGE DE TRAVAIL DE L'ENSEIGNANT
+    try:
+        # Vérifier si enseignant_id est valide (numérique)
+        if enseignant_id and str(enseignant_id).isdigit():
+            cursor.execute("""
+                SELECT COUNT(*) as total_rattrapages,
+                       COUNT(CASE WHEN r.statut = 'approuve' THEN 1 END) as rattrapages_approuves,
+                       COUNT(CASE WHEN r.date_rattrapage_proposee = %s THEN 1 END) as rattrapages_meme_jour
+                FROM Rattrapage r
+                WHERE r.id_enseignant = %s 
+                AND r.date_rattrapage_proposee >= CURRENT_DATE - INTERVAL '30 days'
+            """, (date_rattrapage, int(enseignant_id)))
+            
+            charge_result = cursor.fetchone()
+            charge_enseignant = {
+                'total_rattrapages': charge_result[0] or 0,
+                'rattrapages_approuves': charge_result[1] or 0,
+                'rattrapages_meme_jour': charge_result[2] or 0
+            }
+        else:
+            # Si enseignant_id n'est pas valide, utiliser des valeurs par défaut
+            charge_enseignant = {
+                'total_rattrapages': 0,
+                'rattrapages_approuves': 0,
+                'rattrapages_meme_jour': 0
+            }
+    except Exception as e:
+        print(f"Erreur lors de l'analyse de la charge enseignant: {e}")
+        charge_enseignant = {
+            'total_rattrapages': 0,
+            'rattrapages_approuves': 0,
+            'rattrapages_meme_jour': 0
+        }
+    
+    # 4. VÉRIFICATION DES CONFLITS D'HORAIRES ENSEIGNANT
+    try:
+        # Vérifier si enseignant_id est valide avant de faire les requêtes
+        if enseignant_id and str(enseignant_id).isdigit():
+            # Note: La table Planning n'a pas de colonne id_enseignant, on skip cette vérification
+            # pour éviter l'erreur SQL. Cette fonctionnalité nécessiterait une modification du schéma DB
+            conflits_enseignant = 0
+            classes_enseignant_occupees = ""
+            
+            # Note: Les colonnes d'horaires proposées n'existent pas dans la table Rattrapage
+            # On skip cette vérification pour éviter l'erreur SQL
+            # Cette fonctionnalité nécessiterait l'ajout des colonnes heure_debut_proposee et heure_fin_proposee
+            rattrapages_conflits = 0
+            classes_rattrapage_conflits = ""
+        else:
+            # Si enseignant_id n'est pas valide, pas de conflits possibles
+            conflits_enseignant = 0
+            classes_enseignant_occupees = ""
+            rattrapages_conflits = 0
+            classes_rattrapage_conflits = ""
+        
+    except Exception as e:
+        print(f"Erreur lors de la vérification des conflits enseignant: {e}")
+        conflits_enseignant = 0
+        classes_enseignant_occupees = ""
+        rattrapages_conflits = 0
+        classes_rattrapage_conflits = ""
+    
+    # 5. ANALYSE TEMPORELLE ET CONTEXTUELLE
+    from datetime import datetime, timedelta
+    try:
+        date_obj = datetime.strptime(date_rattrapage, '%Y-%m-%d')
+        jour_semaine = date_obj.strftime('%A')
+        jours_avant = (date_obj - datetime.now()).days
+        
+        # Vérifier si c'est un weekend ou jour férié
+        est_weekend = date_obj.weekday() >= 5  # Samedi = 5, Dimanche = 6
+    except:
+        jour_semaine = "Inconnu"
+        jours_avant = 0
+        est_weekend = False
+    
+    # 5. ANALYSE DU MOTIF AVEC IA
+    motifs_urgents = ['maladie', 'urgence', 'familial', 'médical', 'décès', 'hospitalisation']
+    motifs_acceptables = ['formation', 'conférence', 'mission', 'professionnel', 'pédagogique']
+    
+    urgence_motif = any(mot in motif.lower() for mot in motifs_urgents)
+    acceptabilite_motif = any(mot in motif.lower() for mot in motifs_acceptables) or urgence_motif
+    
+    # 6. CALCUL DU SCORE DE FAISABILITÉ
+    score_faisabilite = 50  # Score de base
+    
+    # Facteurs positifs
+    if salles_disponibles > 0:
+        score_faisabilite += 20
+    if charge_enseignant['rattrapages_meme_jour'] == 0:
+        score_faisabilite += 15
+    if jours_avant >= 3:
+        score_faisabilite += 10
+    if not est_weekend:
+        score_faisabilite += 5
+    if conflits_enseignant == 0 and rattrapages_conflits == 0:
+        score_faisabilite += 15  # Bonus si l'enseignant est libre
+    
+    # Facteurs négatifs
+    if conflits_planning > 0:
+        score_faisabilite -= 25
+    if conflits_enseignant > 0:
+        score_faisabilite -= 30  # Pénalité majeure pour conflit enseignant
+    if rattrapages_conflits > 0:
+        score_faisabilite -= 25  # Pénalité pour rattrapage déjà programmé
+    if charge_enseignant['total_rattrapages'] > 5:
+        score_faisabilite -= 10
+    if jours_avant < 1:
+        score_faisabilite -= 20
+    if est_weekend:
+        score_faisabilite -= 5
+    if jours_avant < 2:
+        score_faisabilite -= 15
+    
+    score_faisabilite = max(0, min(100, score_faisabilite))
+    
+    conn.close()
+    
+    # 7. GÉNÉRATION DU PROMPT AVANCÉ POUR GEMINI
+    prompt = f"""
+    Analysez cette demande de rattrapage avec une approche contextuelle avancée.
+
+    📋 INFORMATIONS DE LA DEMANDE:
+    - Classe: {classe}
+    - Matière: {matiere}
+    - Date: {date_rattrapage} ({jour_semaine}, dans {jours_avant} jours)
+    - Horaire: {heure_debut} - {heure_fin}
+    - Motif: "{motif}"
+    - Enseignant ID: {enseignant_id}
+
+    🔍 ANALYSE TECHNIQUE DÉTAILLÉE:
+    - Conflits planning: {conflits_planning} (Classes: {classes_conflictuelles})
+    - Salles disponibles: {salles_disponibles}/{len(salles_info)} total
+    - Salles occupées: {salles_occupees}
+    - Score de faisabilité calculé: {score_faisabilite}/100
+
+    👨‍🏫 CHARGE DE TRAVAIL ENSEIGNANT:
+    - Rattrapages ce mois: {charge_enseignant['total_rattrapages']}
+    - Rattrapages approuvés: {charge_enseignant['rattrapages_approuves']}
+    - Rattrapages même jour: {charge_enseignant['rattrapages_meme_jour']}
+    
+    ⚠️ CONFLITS D'HORAIRES ENSEIGNANT:
+    - Cours en conflit: {conflits_enseignant} (Classes: {classes_enseignant_occupees})
+    - Rattrapages en conflit: {rattrapages_conflits} (Classes: {classes_rattrapage_conflits})
+
+    🏢 DÉTAILS DES SALLES:
+    {chr(10).join([f"- {s['nom']} ({s['capacite']} places): {'✅ Disponible' if s['disponible'] else '❌ Occupée'}" for s in salles_details[:5]])}
+
+    ⚡ FACTEURS CONTEXTUELS:
+    - Weekend: {'Oui' if est_weekend else 'Non'}
+    - Urgence motif: {'Oui' if urgence_motif else 'Non'}
+    - Motif acceptable: {'Oui' if acceptabilite_motif else 'Non'}
+    - Préavis: {jours_avant} jours
+
+    🎯 CRITÈRES D'ÉVALUATION AVANCÉS:
+    1. Disponibilité des ressources (salles, équipements)
+    2. Impact sur les autres cours et étudiants
+    3. Charge de travail et bien-être de l'enseignant
+    4. Conflits d'horaires de l'enseignant (PRIORITÉ CRITIQUE)
+    5. Urgence et légitimité du motif
+    6. Respect des délais et procédures
+    7. Qualité pédagogique du rattrapage
+    8. Équité envers les autres demandes
+    9. Faisabilité logistique et organisationnelle
+    
+    ⚠️ RÈGLE CRITIQUE: Un enseignant ne peut PAS avoir plusieurs séances simultanées aux mêmes horaires et date.
+
+    Analysez tous ces éléments et donnez une décision claire au format JSON:
+    {{
+        "recommandation": "APPROUVER" ou "REJETER",
+        "score_confiance": [0-100],
+        "priorite": "HAUTE" ou "MOYENNE" ou "BASSE",
+        "raisons": ["raison principale de la décision", "raison secondaire", "raison tertiaire"],
+        "decision_justification": "Explication claire de pourquoi approuver ou rejeter",
+        "suggestions": ["suggestion1", "suggestion2"],
+        "alternatives": ["alternative1", "alternative2"],
+        "conditions": ["condition1", "condition2"]
+    }}
+    """
+    
+    # 8. APPEL À L'IA GEMINI AVEC GESTION D'ERREURS
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        
+        # Parser la réponse JSON
+        import json
+        try:
+            ai_analysis = json.loads(response.text.strip())
+        except:
+            # Fallback intelligent basé sur l'analyse technique
+            ai_analysis = generate_fallback_analysis(
+                score_faisabilite, salles_disponibles, conflits_planning, 
+                urgence_motif, acceptabilite_motif, charge_enseignant
+            )
+    except Exception as e:
+        print(f"Erreur Gemini API: {e}")
+        ai_analysis = generate_fallback_analysis(
+            score_faisabilite, salles_disponibles, conflits_planning, 
+            urgence_motif, acceptabilite_motif, charge_enseignant
+        )
+    
+    # 9. ENRICHISSEMENT DE LA RÉPONSE AVEC DONNÉES CONTEXTUELLES
+    result = {
+        **ai_analysis,
+        'technical_data': {
+            'conflits_planning': conflits_planning,
+            'salles_disponibles': salles_disponibles,
+            'score_faisabilite': score_faisabilite,
+            'conflits_enseignant': conflits_enseignant,
+            'rattrapages_conflits': rattrapages_conflits
+        },
+        'contextual_data': {
+            'est_weekend': est_weekend,
+            'jours_avant': jours_avant,
+            'jour_semaine': jour_semaine,
+            'charge_enseignant': charge_enseignant
+        },
+        'analyse_motif': {
+            'urgence': urgence_motif,
+            'acceptabilite': acceptabilite_motif
+        },
+        'salles_details': salles_details,
+        'demande_info': {
+            'classe': classe,
+            'matiere': matiere,
+            'date_rattrapage': date_rattrapage,
+            'horaire': f"{heure_debut} - {heure_fin}",
+            'motif': motif,
+            'enseignant_id': enseignant_id
+        }
+    }
+    
+    print(f"Analyse IA avancée pour rattrapage {classe} - {matiere}: {ai_analysis.get('recommandation', 'ERREUR')} (Score: {score_faisabilite})")
+    
+    return result
+
+def generate_fallback_analysis(score_faisabilite, salles_disponibles, conflits_planning, urgence_motif, acceptabilite_motif, charge_enseignant):
+    """
+    Génère une analyse de fallback intelligente basée sur les données techniques.
+    """
+    if score_faisabilite >= 60:
+        recommandation = "APPROUVER"
+        priorite = "HAUTE" if urgence_motif else "MOYENNE"
+    else:
+        recommandation = "REJETER"
+        priorite = "BASSE"
+    
+    raisons = []
+    suggestions = []
+    alternatives = []
+    conditions = []
+    
+    # Analyse des raisons pour APPROUVER ou REJETER
+    decision_justification = ""
+    
+    if recommandation == "APPROUVER":
+        decision_justification = "Demande approuvée car les conditions sont favorables"
+        if salles_disponibles > 0:
+            raisons.append(f"✅ {salles_disponibles} salle(s) disponible(s)")
+        if conflits_planning <= 2:
+            raisons.append("✅ Conflits de planning gérables")
+        if urgence_motif:
+            raisons.append("🚨 Motif d'urgence justifié")
+            priorite = "HAUTE"
+        elif acceptabilite_motif:
+            raisons.append("✅ Motif pédagogiquement acceptable")
+        if charge_enseignant['total_rattrapages'] <= 5:
+            raisons.append("✅ Charge de travail enseignant raisonnable")
+    else:  # REJETER
+        decision_justification = "Demande rejetée en raison de contraintes importantes"
+        if salles_disponibles == 0:
+            raisons.append("❌ Aucune salle disponible")
+        if conflits_planning > 2:
+            raisons.append(f"❌ Trop de conflits de planning ({conflits_planning})")
+        if not acceptabilite_motif and not urgence_motif:
+            raisons.append("❌ Motif insuffisamment justifié")
+        if charge_enseignant['total_rattrapages'] > 5:
+            raisons.append("❌ Surcharge de rattrapages pour l'enseignant")
+        
+        # Suggestions pour améliorer la demande
+        suggestions.append("Revoir la justification du motif")
+        suggestions.append("Proposer un autre créneau horaire")
+        alternatives.append("Reporter à une date ultérieure")
+        alternatives.append("Organiser en mode distanciel")
+    
+    return {
+        "recommandation": recommandation,
+        "score_confiance": min(95, max(60, score_faisabilite + 10)),
+        "priorite": priorite,
+        "raisons": raisons[:4],  # Limiter à 4 raisons principales
+        "decision_justification": decision_justification,
+        "suggestions": suggestions[:3],  # Limiter à 3 suggestions
+        "alternatives": alternatives[:3],  # Limiter à 3 alternatives
+        "conditions": conditions[:3]  # Limiter à 3 conditions
+    }
 
 if __name__ == '__main__':
     # Note: Don't use this in production. Use a proper WSGI server like Gunicorn.

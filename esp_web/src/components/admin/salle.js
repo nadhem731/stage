@@ -1,12 +1,9 @@
 // esp_web/src/components/admin/salle.js
 import React, { useEffect, useState } from 'react';
-import Sidebar from '../Sidebar';
 import axios from '../../api/axios';
+import AdminLayout from './AdminLayout';
 import '../../style/etudient.css';
 import '../../style/table.css';
-import Pagination from '@mui/material/Pagination';
-import Stack from '@mui/material/Stack';
-import ClasseTable from './ClasseTable';
 
 const Salle = () => {
   const [salles, setSalles] = useState([]);
@@ -35,7 +32,6 @@ const Salle = () => {
     typeSalle: { typeSalle: '' }
   });
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8;
   const [search, setSearch] = useState('');
   const [typeSalles, setTypeSalles] = useState([]);
 
@@ -44,8 +40,10 @@ const Salle = () => {
       setLoading(true);
       setError(null);
       const res = await axios.get('/api/salles');
+      console.log('DEBUG: Salles récupérées:', res.data);
       setSalles(res.data);
     } catch (err) {
+      console.error('Erreur lors du chargement des salles:', err);
       setError('Erreur lors du chargement des salles');
     } finally {
       setLoading(false);
@@ -54,12 +52,22 @@ const Salle = () => {
 
   const fetchTypeSalles = async () => {
     try {
+      console.log('Fetching types de salles...');
       const res = await axios.get('/api/typesalle');
+      console.log('Types de salles récupérés:', res.data);
       setTypeSalles(res.data);
     } catch (err) {
+      console.error('Erreur lors du chargement des types de salle:', err);
       setError('Erreur lors du chargement des types de salle');
+      // En cas d'erreur, définir des types par défaut
+      setTypeSalles([
+        { typeSalle: 'salle de cour' },
+        { typeSalle: 'salle de soutenance' },
+        { typeSalle: 'amphie' }
+      ]);
     }
   };
+
 
   useEffect(() => {
     fetchSalles();
@@ -222,6 +230,29 @@ const Salle = () => {
       console.error(err);
     }
   };
+
+  const handleTypeChange = async (idSalle, newType) => {
+    try {
+      // Récupérer les données actuelles de la salle
+      const currentSalle = salles.find(s => s.idSalle === idSalle);
+      if (!currentSalle) return;
+      
+      // Préparer les données avec le nouveau type
+      const updatedData = {
+        numSalle: currentSalle.numSalle,
+        capacite: currentSalle.capacite,
+        bloc: currentSalle.bloc,
+        disponibilite: currentSalle.disponibilite,
+        typeSalle: { typeSalle: newType }
+      };
+      
+      await axios.put(`/api/salles/${idSalle}`, updatedData);
+      fetchSalles(); // Refresh the list after update
+    } catch (err) {
+      alert('Erreur lors de la mise à jour du type.');
+      console.error(err);
+    }
+  };
  
   // Recherche et pagination
   const filteredSalles = salles.filter(salle =>
@@ -250,31 +281,31 @@ const Salle = () => {
   const groupKeys = Object.keys(grouped).sort();
 
   // Pagination par groupe de première lettre
-  const totalPages = groupKeys.length;
   const currentGroupKey = groupKeys[page - 1];
   const paginatedSalles = grouped[currentGroupKey] || [];
 
-  // Remplacer l'utilisation de typeSalles par une liste statique
-  const typeSallesDisponibles = [
-    { typeSalle: 'amphie' },
-    { typeSalle: 'salle de cour' },
-    { typeSalle: 'salle de soutenance' }
-  ];
+  // Utiliser les types récupérés depuis l'API
+  const typeSallesDisponibles = typeSalles;
+
+  if (loading) {
+    return (
+      <AdminLayout
+        activeMenu="Salle"
+        setActiveMenu={() => {}}
+        loading={true}
+        loadingMessage="Chargement des salles..."
+      />
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar activeMenu="Salles" setActiveMenu={() => {}} />
-      <main style={{ 
-        flex: 1, 
-        padding: '2rem', 
-        marginLeft: '280px',
-        minWidth: 0,
-        position: 'relative',
-        zIndex: 1
-      }}>
-        <div style={{ maxWidth: 1100, margin: 'auto' }}>
-          <div className="dashboard-content" style={{ position: 'relative' }}>
-            <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <AdminLayout
+      activeMenu="Salle"
+      setActiveMenu={() => {}}
+      title="Gestion des Salles"
+      subtitle="Gestion des salles et classes"
+    >
+              <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Gestion des Salles</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <input
@@ -365,9 +396,17 @@ const Salle = () => {
                 <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
                   <select name="typeSalle" value={formData.typeSalle.typeSalle} onChange={handleFormChange} style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} required>
                     <option value="">Sélectionner un type</option>
-                    {typeSallesDisponibles.map((ts) => (
-                      <option key={ts.typeSalle} value={ts.typeSalle}>{ts.typeSalle}</option>
-                    ))}
+                    {typeSallesDisponibles && typeSallesDisponibles.length > 0 ? (
+                      typeSallesDisponibles.map((ts) => (
+                        <option key={ts.typeSalle} value={ts.typeSalle}>{ts.typeSalle}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="salle de cour">salle de cour</option>
+                        <option value="salle de soutenance">salle de soutenance</option>
+                        <option value="amphie">amphie</option>
+                      </>
+                    )}
                   </select>
                   <select name="disponibilite" value={formData.disponibilite} onChange={handleFormChange} style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}>
                     <option value={true}>Disponible</option>
@@ -403,9 +442,17 @@ const Salle = () => {
                   <input name="bloc" value={editData.bloc} onChange={handleEditChange} placeholder="Bloc" style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} />
                   <select name="typeSalle" value={editData.typeSalle.typeSalle} onChange={handleEditChange} style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }} required>
                     <option value="">Sélectionner un type</option>
-                    {typeSallesDisponibles.map((ts) => (
-                      <option key={ts.typeSalle} value={ts.typeSalle}>{ts.typeSalle}</option>
-                    ))}
+                    {typeSallesDisponibles && typeSallesDisponibles.length > 0 ? (
+                      typeSallesDisponibles.map((ts) => (
+                        <option key={ts.typeSalle} value={ts.typeSalle}>{ts.typeSalle}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="salle de cour">salle de cour</option>
+                        <option value="salle de soutenance">salle de soutenance</option>
+                        <option value="amphie">amphie</option>
+                      </>
+                    )}
                   </select>
                   <select name="disponibilite" value={editData.disponibilite} onChange={handleEditChange} style={{ flex: 1, minWidth: 120, padding: 8, borderRadius: 6, border: '1px solid #ddd' }}>
                     <option value={true}>Disponible</option>
@@ -429,8 +476,8 @@ const Salle = () => {
                 <span style={{ color: '#CB0920', fontWeight: 600, fontSize: '1.1rem' }}>{error}</span>
               </div>
             ) : (
-              <div style={{ marginTop: '2rem' }}>
-                <table className="table-dashboard">
+              <div className="table-container" style={{ marginTop: '2rem' }}>
+                <table className="table-dashboard rooms-table">
                   <thead>
                     <tr>
                       <th>NUMÉRO</th>
@@ -438,7 +485,7 @@ const Salle = () => {
                       <th>BLOC</th>
                       <th>TYPE</th>
                       <th>DISPONIBLE</th>
-                      <th>Action</th>
+                      <th className="actions-column">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -447,7 +494,33 @@ const Salle = () => {
                         <td>{salle.numSalle}</td>
                         <td>{salle.capacite}</td>
                         <td>{salle.bloc}</td>
-                        <td>{typeof salle.typeSalle === 'string' ? salle.typeSalle : salle.typeSalle?.typeSalle}</td>
+                        <td>
+                          <select
+                            value={typeof salle.typeSalle === 'string' ? salle.typeSalle : salle.typeSalle?.typeSalle || ''}
+                            onChange={(e) => handleTypeChange(salle.idSalle, e.target.value)}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 6,
+                              border: '1px solid #ddd',
+                              minWidth: 120,
+                              background: '#fff',
+                              fontWeight: 500
+                            }}
+                          >
+                            <option value="">Sélectionner un type</option>
+                            {typeSallesDisponibles && typeSallesDisponibles.length > 0 ? (
+                              typeSallesDisponibles.map((ts) => (
+                                <option key={ts.typeSalle} value={ts.typeSalle}>{ts.typeSalle}</option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="salle de cour">salle de cour</option>
+                                <option value="salle de soutenance">salle de soutenance</option>
+                                <option value="amphie">amphie</option>
+                              </>
+                            )}
+                          </select>
+                        </td>
                         <td>
                           <select
                             value={salle.disponibilite}
@@ -466,15 +539,17 @@ const Salle = () => {
                             <option value={false}>Non</option>
                           </select>
                         </td>
-                        <td>
-                          <button
-                            style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
-                            onClick={() => handleEditClick(salle)}
-                          >Modifier</button>
-                          <button
-                            style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
-                            onClick={() => handleDelete(salle.idSalle)}
-                          >Supprimer</button>
+                        <td className="actions-cell">
+                          <div className="action-buttons">
+                            <button
+                              className="btn-edit"
+                              onClick={() => handleEditClick(salle)}
+                            >Modifier</button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDelete(salle.idSalle)}
+                            >Supprimer</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -506,10 +581,7 @@ const Salle = () => {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      </main>
-    </div>
+    </AdminLayout>
   );
 };
 

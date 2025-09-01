@@ -61,6 +61,7 @@ public class Planning {
     @Column(name = "mode_cours")
     private String modeCours = "presentiel"; // 'presentiel', 'en_ligne'
 
+    
     // Getters and Setters
     public Long getIdPlanning() {
         return idPlanning;
@@ -151,4 +152,5 @@ public class Planning {
     public void setModeCours(String modeCours) {
         this.modeCours = modeCours;
     }
+
 }

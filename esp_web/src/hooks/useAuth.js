@@ -37,11 +37,12 @@ export function AuthProvider({ children }) {
   // Fonction pour récupérer les informations utilisateur depuis le backend
   const fetchUserInfo = async (token) => {
     try {
-      const response = await axios.get('/api/auth/me', {
+      const response = await axios.get('/api/users/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      console.log('DEBUG - fetchUserInfo response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching user info:', error);
@@ -72,10 +73,25 @@ export function AuthProvider({ children }) {
         // Essayer de récupérer les informations utilisateur depuis le backend
         const userInfo = await fetchUserInfo(token);
         if (userInfo) {
-          setUser({
+          console.log('DEBUG - Setting user from fetchUserInfo:', userInfo);
+          
+          // Décoder le token pour récupérer l'identifiant
+          const token = localStorage.getItem('token');
+          const decodedToken = decodeToken(token);
+          const userIdentifiant = decodedToken?.sub;
+          
+          const userWithCompatibility = {
             ...userInfo,
-            identifiant: userInfo.identifiant
-          });
+            id: userIdentifiant || userInfo.identifiant,
+            idUser: userInfo.idUser || userIdentifiant || userInfo.identifiant,
+            identifiant: userIdentifiant || userInfo.identifiant,
+            cin: userInfo.cin || '',
+            email: userInfo.email || '',
+            tel: userInfo.tel || '',
+            matiere: userInfo.matiere || ''
+          };
+          console.log('DEBUG - Final user object:', userWithCompatibility);
+          setUser(userWithCompatibility);
         } else {
           // Si la récupération échoue, supprimer le token
           console.log('Failed to fetch user info, removing token');
@@ -94,6 +110,32 @@ export function AuthProvider({ children }) {
     initializeUser();
   }, []);
 
+  // Rafraîchir les informations de l'utilisateur (utile après mise à jour du profil)
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token || isTokenExpired(token)) {
+      return null;
+    }
+    const userInfo = await fetchUserInfo(token);
+    if (userInfo) {
+      const decodedToken = decodeToken(token);
+      const userIdentifiant = decodedToken?.sub;
+      const userWithCompatibility = {
+        ...userInfo,
+        id: userIdentifiant || userInfo.identifiant,
+        idUser: userInfo.idUser || userIdentifiant || userInfo.identifiant,
+        identifiant: userIdentifiant || userInfo.identifiant,
+        cin: userInfo.cin || '',
+        email: userInfo.email || '',
+        tel: userInfo.tel || '',
+        matiere: userInfo.matiere || ''
+      };
+      setUser(userWithCompatibility);
+      return userWithCompatibility;
+    }
+    return null;
+  };
+
   const login = async (identifiant, password) => {
     try {
       const response = await axios.post('/api/auth/login', {
@@ -104,17 +146,37 @@ export function AuthProvider({ children }) {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         
-        // Créer l'objet utilisateur avec toutes les informations
+        console.log('DEBUG - Full login response:', JSON.stringify(response.data, null, 2));
+        
+        // Décoder le token JWT pour extraire l'ID utilisateur
+        const decodedToken = decodeToken(response.data.token);
+        console.log('DEBUG - Decoded token:', JSON.stringify(decodedToken, null, 2));
+        
+        // Extraire l'ID depuis le token JWT (sub contient l'identifiant)
+        const userIdentifiant = decodedToken?.sub || response.data.email;
+        
         const userInfo = {
-          id: response.data.id,
-          identifiant: response.data.identifiant,
+          id: userIdentifiant, // Utiliser l'identifiant comme ID
+          idUser: userIdentifiant, // Ajout pour compatibilité
+          identifiant: userIdentifiant,
           nom: response.data.nom,
           prenom: response.data.prenom,
-          tel: response.data.tel,
+          tel: response.data.tel || '',
+          cin: response.data.cin || '',
+          email: response.data.email || '',
+          matiere: response.data.matiere || '',
           role: response.data.role
         };
+        console.log('DEBUG - Login userInfo created:', JSON.stringify(userInfo, null, 2));
+        console.log('DEBUG - Setting user state with:', JSON.stringify(userInfo, null, 2));
         
         setUser(userInfo);
+        
+        // Vérifier immédiatement que l'état est mis à jour
+        setTimeout(() => {
+          console.log('DEBUG - User state after login should be set');
+        }, 100);
+        
         return response.data;
       } else {
         throw new Error('No token received');
@@ -150,6 +212,7 @@ export function AuthProvider({ children }) {
       login, 
       logout, 
       loading,
+      refreshUser,
       hasRole,
       hasAnyRole
     }}>

@@ -17,13 +17,18 @@
     "axios": "^1.10.0",
     "bootstrap": "^5.3.7",
     "classnames": "^2.5.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
     "mdb-react-ui-kit": "^9.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.3",
     "react-scripts": "^5.0.1",
     "react-select": "^5.10.2",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "@azure/msal-browser": "^3.7.1",
+    "@azure/msal-react": "^2.0.9",
+    "@microsoft/microsoft-graph-client": "^3.0.7"
   },
   "scripts": {
     "start": "react-scripts start",

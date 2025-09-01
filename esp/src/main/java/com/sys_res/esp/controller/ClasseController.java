@@ -25,7 +25,14 @@ public class ClasseController {
 
     @GetMapping
     public List<Classe> getAll() {
-        return classeRepository.findAll();
+        List<Classe> classes = classeRepository.findAll();
+        System.out.println("=== DEBUG RÉCUPÉRATION CLASSES ===");
+        System.out.println("Nombre total de classes: " + classes.size());
+        for (Classe classe : classes) {
+            System.out.println("- Classe: " + classe.getNomClasse() + " (ID: " + classe.getIdClasse() + ", Effectif: " + classe.getEffectif() + ")");
+        }
+        System.out.println("=====================================");
+        return classes;
     }
 
     @GetMapping("/{id}")

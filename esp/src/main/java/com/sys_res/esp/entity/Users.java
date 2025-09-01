@@ -1,5 +1,12 @@
 package com.sys_res.esp.entity;
 
+import java.util.Map;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -9,13 +16,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-import java.util.Map;
 
 @Data
 @Entity
 @Table(name = "Users")
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,6 +63,15 @@ public class Users {
     @Column(name = "disponibilite", columnDefinition = "jsonb")
     private Map<String, Object> disponibilite;
 
+    @Column(name = "image_data")
+    private byte[] imageData;
+    
+    @Column(name = "image_type")
+    private String imageType;
+
+    @Column(name = "status_compte", length = 20, nullable = false, columnDefinition = "varchar(20) default 'ACTIF'")
+    private String statusCompte = "ACTIF";
+
     public void setIdUser(Long idUser) {
         this.idUser = idUser;
     }
@@ -71,5 +85,29 @@ public class Users {
 
     public String getRoleTypeRole() {
         return this.role != null ? this.role.getTypeRole() : null;
+    }
+    
+    public String getImageUrl() {
+        if (this.imageData == null || this.imageType == null) {
+            return null;
+        }
+        String base64Image = java.util.Base64.getEncoder().encodeToString(this.imageData);
+        return "data:" + this.imageType + ";base64," + base64Image;
+    }
+    
+    public void setImageUrl(String imageUrl) {
+        // Cette méthode est un setter factice pour la désérialisation JSON
+        // L'URL de l'image est générée à partir de imageData et imageType
+        // donc on ne fait rien ici
+        if (imageUrl != null && imageUrl.startsWith("data:") && imageUrl.contains(";base64,")) {
+            try {
+                String base64Data = imageUrl.split(",")[1];
+                this.imageData = java.util.Base64.getDecoder().decode(base64Data);
+                this.imageType = imageUrl.split(";")[0].split(":")[1];
+            } catch (Exception e) {
+                // En cas d'erreur, on ne fait rien
+                System.err.println("Erreur lors de la conversion de l'URL en image: " + e.getMessage());
+            }
+        }
     }
 }

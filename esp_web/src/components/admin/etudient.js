@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import Sidebar from '../Sidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { ROLES } from '../../config/roles';
+import AdminLayout from './AdminLayout';
 import '../../style/etudient.css';
 import '../../style/table.css';
 import Pagination from '@mui/material/Pagination';
@@ -27,17 +27,28 @@ const Etudient = () => {
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({ nom: '', prenom: '', email: '', tel: '', identifiant: '', cin: '' });
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8; // nombre d'étudiants par page
+  const rowsPerPage = 10; // nombre d'étudiants par page
   const [search, setSearch] = useState('');
+  const [statusLoading, setStatusLoading] = useState({});
 
   // Fonction utilitaire pour rafraîchir la liste des étudiants
   const fetchStudents = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get('/api/users', { params: { role: ROLES.ETUDIANT } });
+      const res = await axios.get('/api/users', { 
+        params: { 
+          role: ROLES.ETUDIANT,
+          _t: Date.now() // Cache busting timestamp
+        },
+        // Forcer le rechargement en ajoutant un timestamp
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      console.log('DEBUG: Étudiants récupérés:', res.data);
       setStudents(res.data);
+      setPage(1); // Retourner à la première page après ajout
     } catch (err) {
+      console.error('Erreur lors du chargement des étudiants:', err);
       setError('Erreur lors du chargement des étudiants');
     } finally {
       setLoading(false);
@@ -67,18 +78,33 @@ const Etudient = () => {
       return;
     }
     try {
-      await axios.post('/api/auth/signup', {
+      await axios.post('/api/users', {
         ...formData,
-        roleTypeRole: ROLES.ETUDIANT, // Correction ici
+        roleTypeRole: ROLES.ETUDIANT,
         password: formData.cin, // mot de passe = cin
       });
-      setFormSuccess('Étudiant ajouté avec succès !');
+      
+      // Forcer le rafraîchissement immédiat AVANT d'afficher le succès
+      await fetchStudents();
+      
+      setFormSuccess('Étudiant ajouté avec succès ! Un email avec les identifiants a été envoyé.');
       setShowForm(false);
       setFormData({ nom: '', prenom: '', email: '', tel: '', identifiant: '', cin: '' });
-      // Rafraîchir la liste
-      fetchStudents();
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Erreur lors de l\'ajout');
+      console.error('Erreur détaillée:', err.response?.data);
+      if (err.code === 'ECONNABORTED') {
+        setFormError('Timeout de la requête. L\'étudiant pourrait avoir été ajouté. Veuillez rafraîchir la page.');
+        // Rafraîchir automatiquement après un délai
+        setTimeout(async () => {
+          await fetchStudents();
+        }, 2000);
+      } else if (err.response?.data?.message?.includes('contrainte unique')) {
+        setFormError('Ce CIN existe déjà dans le système. Veuillez utiliser un CIN différent.');
+      } else if (err.response?.data?.message?.includes('cin')) {
+        setFormError('Erreur avec le CIN: ' + err.response.data.message);
+      } else {
+        setFormError(err.response?.data?.message || 'Erreur lors de l\'ajout');
+      }
     }
   };
 
@@ -130,6 +156,19 @@ const Etudient = () => {
     }
   };
 
+  const handleStatusChange = async (idUser, newStatus) => {
+    setStatusLoading(prev => ({ ...prev, [idUser]: true }));
+    try {
+      await axios.put(`/api/users/${idUser}/status`, { statusCompte: newStatus });
+      fetchStudents();
+    } catch (err) {
+      console.error('Status change error:', err);
+      alert('Erreur lors du changement de statut: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setStatusLoading(prev => ({ ...prev, [idUser]: false }));
+    }
+  };
+
   const handleDelete = async (idUser) => {
     if (!window.confirm('Voulez-vous vraiment supprimer cet étudiant ?')) return;
     try {
@@ -155,20 +194,33 @@ const Etudient = () => {
     page * rowsPerPage
   );
 
+  if (loading) {
+    return (
+      <AdminLayout
+        activeMenu="Etudient"
+        setActiveMenu={() => {}}
+        loading={true}
+        loadingMessage="Chargement des étudiants..."
+      />
+    );
+  }
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar activeMenu="Etudiant" setActiveMenu={() => {}} />
-      <main style={{ 
+    <AdminLayout
+      activeMenu="Etudient"
+      setActiveMenu={() => {}}
+      title="Gestion des Étudiants"
+      subtitle="Gestion des comptes étudiants"
+    >
+      <div style={{ 
         flex: 1, 
         padding: '2rem', 
-        marginLeft: '280px',
         minWidth: 0,
         position: 'relative',
         zIndex: 1
       }}>
         <button onClick={() => navigate('/dashboard')} style={{ display: 'none' }} />
-        <div className="dashboard-content" style={{ position: 'relative' }}>
-          <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>Gestion des Étudiants</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <input
@@ -177,11 +229,15 @@ const Etudient = () => {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{
-                  padding: 8,
+                  padding: '8px 12px',
                   borderRadius: 6,
-                  border: '1px solid #CB0920',
-                  minWidth: 180,
-                  fontSize: 16
+                  border: '1px solid #ddd',
+                  width: 220,
+                  fontSize: 15,
+                  marginRight: 8,
+                  background: '#fafafa',
+                  transition: 'box-shadow 0.2s',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
                 }}
               />
               <button
@@ -208,8 +264,8 @@ const Etudient = () => {
                 +
               </button>
             </div>
-          </h2>
-          {showForm && (
+        </h2>
+        {showForm && (
             <form className="add-etudient-form" onSubmit={handleFormSubmit} style={{
               background: '#fff',
               border: '1px solid #f5f5f5',
@@ -241,8 +297,8 @@ const Etudient = () => {
                 <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}>Ajouter</button>
               </div>
             </form>
-          )}
-          {editId && (
+        )}
+        {editId && (
             <form className="add-etudient-form" onSubmit={handleEditSubmit} style={{
               background: '#fff',
               border: '1px solid #f5f5f5',
@@ -274,82 +330,147 @@ const Etudient = () => {
                 <button type="submit" style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}>Enregistrer</button>
               </div>
             </form>
-          )}
-          {loading ? (
+        )}
+        {loading ? (
             <div style={{ textAlign: 'center', margin: '2rem 0' }}>
               <span style={{ color: '#CB0920', fontWeight: 600, fontSize: '1.2rem' }}>Chargement...</span>
             </div>
-          ) : error ? (
+        ) : error ? (
             <div style={{ textAlign: 'center', margin: '2rem 0' }}>
               <span style={{ color: '#CB0920', fontWeight: 600, fontSize: '1.1rem' }}>{error}</span>
             </div>
-          ) : (
-            <div style={{ marginTop: '2rem' }}>
-              <table className="table-dashboard">
-                <thead>
-                  <tr>
-                    <th>IDENTIFIANT</th>
-                    <th>NOM</th>
-                    <th>PRÉNOM</th>
-                    <th>EMAIL</th>
-                    <th>TÉLÉPHONE</th>
-                    <th>CIN</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedStudents.map((etudiant) => (
-                    <tr key={etudiant.idUser}>
-                      <td>{etudiant.identifiant || '—'}</td>
-                      <td>{etudiant.nom}</td>
-                      <td>{etudiant.prenom}</td>
-                      <td>{etudiant.email}</td>
-                      <td>{etudiant.tel}</td>
-                      <td>{etudiant.cin}</td>
-                      <td>
-                        <button
-                          style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
-                          onClick={() => handleEditClick(etudiant)}
-                        >Modifier</button>
-                        <button
-                          style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
-                          onClick={() => handleDelete(etudiant.idUser)}
-                        >Supprimer</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        ) : (
+            <>
+              <div className="users-cards-container">
+                {paginatedStudents.map((etudiant) => (
+                  <div key={etudiant.idUser} className="user-card">
+                                          <div className="user-card-header">
+                        <div className="user-card-avatar">
+                          {etudiant.imageUrl ? (
+                            <img 
+                              src={etudiant.imageUrl} 
+                              alt="Avatar" 
+                              style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                borderRadius: '50%', 
+                                objectFit: 'cover' 
+                              }} 
+                            />
+                          ) : (
+                            etudiant.prenom?.charAt(0)?.toUpperCase() || '👨‍🎓'
+                          )}
+                        </div>
+                      <h3 className="user-card-name">
+                        {etudiant.prenom} {etudiant.nom}
+                      </h3>
+                      <p className="user-card-role">👨‍🎓 Étudiant</p>
+                    </div>
+                    
+                    <div className="user-card-body">
+                      <div className={`user-status-badge ${(etudiant.statusCompte || 'ACTIF').toLowerCase()}`}>
+                        {etudiant.statusCompte === 'ACTIF' ? '✅ Actif' : 
+                         etudiant.statusCompte === 'INACTIF' ? '❌ Inactif' : 
+                         etudiant.statusCompte === 'SUSPENDU' ? '⏸️ Suspendu' : '✅ Actif'}
+                      </div>
+                      
+                      <div className="user-info-grid">
+                        <div className="user-info-item">
+                          <span className="user-info-icon">🆔</span>
+                          <span className="user-info-label">Identifiant:</span>
+                          <span className="user-info-value">{etudiant.identifiant || '—'}</span>
+                        </div>
+                        
+                        <div className="user-info-item">
+                          <span className="user-info-icon">📧</span>
+                          <span className="user-info-label">Email:</span>
+                          <span className="user-info-value">{etudiant.email}</span>
+                        </div>
+                        
+                        <div className="user-info-item">
+                          <span className="user-info-icon">📱</span>
+                          <span className="user-info-label">Téléphone:</span>
+                          <span className="user-info-value">{etudiant.tel}</span>
+                        </div>
+                        
+                        <div className="user-info-item">
+                          <span className="user-info-icon">🆔</span>
+                          <span className="user-info-label">CIN:</span>
+                          <span className="user-info-value">{etudiant.cin}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="user-card-actions">
+                        <select
+                          className="user-card-status-select"
+                          value={etudiant.statusCompte || 'ACTIF'}
+                          onChange={(e) => handleStatusChange(etudiant.idUser, e.target.value)}
+                          disabled={statusLoading[etudiant.idUser]}
+                        >
+                          <option value="ACTIF">✅ Actif</option>
+                          <option value="INACTIF">❌ Inactif</option>
+                          <option value="SUSPENDU">⏸️ Suspendu</option>
+                        </select>
+                        
+                        <div className="user-card-buttons">
+                          <button
+                            className="user-card-btn user-card-btn-edit"
+                            onClick={() => handleEditClick(etudiant)}
+                            disabled={statusLoading[etudiant.idUser]}
+                          >
+                            ✏️ Modifier
+                          </button>
+                          <button
+                            className="user-card-btn user-card-btn-delete"
+                            onClick={() => handleDelete(etudiant.idUser)}
+                            disabled={statusLoading[etudiant.idUser]}
+                          >
+                            🗑️ Supprimer
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {statusLoading[etudiant.idUser] && (
+                        <div style={{ textAlign: 'center', marginTop: '1rem', color: '#CB0920' }}>
+                          ⏳ Mise à jour du statut...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
               {/* Pagination */}
-              <Stack spacing={2} sx={{ alignItems: 'center', marginTop: 3 }}>
-                <Pagination
-                  count={Math.ceil(filteredStudents.length / rowsPerPage)}
-                  page={page}
-                  onChange={(_, value) => setPage(value)}
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      color: '#CB0920',
-                      borderColor: '#CB0920',
-                    },
-                    '& .Mui-selected': {
-                      backgroundColor: '#CB0920 !important',
-                      color: '#fff !important',
-                      borderColor: '#CB0920',
-                    },
-                    '& .MuiPaginationItem-root.Mui-selected:hover': {
-                      backgroundColor: '#b8081c !important',
-                    },
-                    '& .MuiPaginationItem-root:hover': {
-                      backgroundColor: '#fbeaec',
-                    }
-                  }}
-                />
-              </Stack>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+                <Stack spacing={2} sx={{ alignItems: 'center' }}>
+                  <Pagination
+                    count={Math.ceil(filteredStudents.length / rowsPerPage)}
+                    page={page}
+                    onChange={(_, value) => setPage(value)}
+                    sx={{
+                      '& .MuiPaginationItem-root': {
+                        color: '#CB0920',
+                        borderColor: '#CB0920',
+                      },
+                      '& .Mui-selected': {
+                        backgroundColor: '#CB0920 !important',
+                        color: '#fff !important',
+                        borderColor: '#CB0920',
+                      },
+                      '& .MuiPaginationItem-root.Mui-selected:hover': {
+                        backgroundColor: '#b8081c !important',
+                      },
+                      '& .MuiPaginationItem-root:hover': {
+                        backgroundColor: '#fbeaec',
+                      }
+                    }}
+                  />
+                </Stack>
+              </div>
+            </>
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 

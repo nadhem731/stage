@@ -4,6 +4,8 @@ import java.sql.Date;
 import java.sql.Time;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import com.sys_res.esp.entity.Users;
 import com.sys_res.esp.repository.SalleRepository;
 import com.sys_res.esp.repository.SoutenanceRepository;
 import com.sys_res.esp.repository.UsersRepository;
+import com.sys_res.esp.service.EmailService;
 
 @RestController
 @RequestMapping("/api/soutenances")
@@ -36,6 +39,9 @@ public class SoutenanceController {
     
     @Autowired
     private UsersRepository usersRepository;
+    
+    @Autowired
+    private EmailService emailService;
 
     @GetMapping
     public List<Soutenance> getAllSoutenances() {
@@ -85,6 +91,53 @@ public class SoutenanceController {
         }
     }
 
+    // Endpoint pour récupérer les soutenances formatées pour les demandes de rattrapage
+    @GetMapping("/seances/enseignant")
+    @PreAuthorize("hasRole('ROLE_ENSEIGNANT') or hasRole('ROLE_ADMIN')")
+    public ResponseEntity<?> getSeancesSoutenanceEnseignant() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            
+            Users currentUser = usersRepository.findByIdentifiant(username)
+                                               .orElseThrow(() -> new RuntimeException("User not found with identifiant: " + username));
+            
+            // Récupérer les soutenances où l'enseignant est membre du jury
+            List<Soutenance> soutenances = soutenanceRepository.findValidatedSoutenancesByJuryMember(currentUser.getIdUser());
+            
+            // Convertir en format unifié pour le frontend
+            List<Map<String, Object>> seances = new ArrayList<>();
+            
+            for (Soutenance soutenance : soutenances) {
+                Map<String, Object> seance = new HashMap<>();
+                seance.put("id", soutenance.getIdSoutenance());
+                seance.put("type", "soutenance");
+                seance.put("date", soutenance.getDate() != null ? soutenance.getDate().toString() : "");
+                seance.put("heureDebut", soutenance.getHeureTime() != null ? soutenance.getHeureTime().toString() : "");
+                
+                // Calculer heure de fin (durée de 195 minutes comme les cours)
+                if (soutenance.getHeureTime() != null) {
+                    Time heureFin = new Time(soutenance.getHeureTime().getTime() + (195 * 60 * 1000));
+                    seance.put("heureFin", heureFin.toString());
+                } else {
+                    seance.put("heureFin", "");
+                }
+                
+                seance.put("classe", "Soutenance");
+                seance.put("matiere", "Soutenance PFE");
+                seance.put("salle", soutenance.getSalle() != null ? soutenance.getSalle().getNumSalle() : "");
+                seance.put("etudiant", soutenance.getUser() != null ? soutenance.getUser().getNom() + " " + soutenance.getUser().getPrenom() : "");
+                seances.add(seance);
+            }
+            
+            return ResponseEntity.ok(seances);
+        } catch (Exception e) {
+            System.err.println("ERROR: Erreur lors de la récupération des séances soutenances: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PostMapping
     public Soutenance createSoutenance(@RequestBody Soutenance soutenance) {
         return soutenanceRepository.save(soutenance);
@@ -118,7 +171,7 @@ public class SoutenanceController {
                 // Durée fixe de 90 minutes
                 soutenance.setDuree("90 minutes");
                 
-                // Jour de la semaine
+
                 String jour = (String) soutenanceData.get("jour");
                 System.out.println("DEBUG: Jour récupéré: " + jour);
                 if (jour != null) {
@@ -150,6 +203,24 @@ public class SoutenanceController {
                 soutenance.setStatutValidation("valide");
                 
                 soutenanceRepository.save(soutenance);
+            }
+            
+            // Envoyer l'email de notification à tous les enseignants après validation réussie des soutenances
+            // ET synchroniser automatiquement avec Microsoft Calendar
+            try {
+                emailService.sendPlanningNotificationToAllTeachers();
+                System.out.println("DEBUG: Emails et synchronisation Microsoft Calendar terminés pour toutes les soutenances");
+            } catch (Exception emailException) {
+                // Log l'erreur mais ne pas faire échouer la sauvegarde
+                System.err.println("Erreur lors de l'envoi des emails de soutenance ou synchronisation Calendar: " + emailException.getMessage());
+            }
+            
+            // Envoyer l'email de soutenance aux étudiants concernés
+            try {
+                List<Soutenance> savedSoutenances = soutenanceRepository.findByStatutValidation("valide");
+                emailService.sendSoutenanceScheduleToStudents(savedSoutenances);
+            } catch (Exception emailException) {
+                System.err.println("Erreur lors de l'envoi des emails de soutenance aux étudiants: " + emailException.getMessage());
             }
             
             return ResponseEntity.ok().body(Map.of("message", "Planning de soutenances sauvegardé avec succès"));

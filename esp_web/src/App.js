@@ -13,6 +13,11 @@ import ClasseTable from './components/admin/ClasseTable';
 import Affectation from './components/admin/affectation';
 import Disponibilite from './components/enseignant/disponibilite';
 import PlanningEnseignant from './components/enseignant/planning_ens';
+import RattrapageDem from './components/enseignant/rattrapage_dem';
+import RattrapageAdmin from './components/admin/rattrapage_admin';
+import MicrosoftIntegration from './components/admin/MicrosoftIntegration';
+import AdminList from './components/admin/AdminList';
+import UserProfile from './components/UserProfile';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -59,6 +64,11 @@ function AppContent() {
           <Route path="/admin/planning" element={<ProtectedRoute><Planning /></ProtectedRoute>} />
           <Route path="/enseignant/disponibilite" element={<ProtectedRoute><Disponibilite /></ProtectedRoute>} />
           <Route path="/enseignant/planning" element={<ProtectedRoute><PlanningEnseignant /></ProtectedRoute>} />
+          <Route path="/enseignant/rattrapage" element={<ProtectedRoute><RattrapageDem /></ProtectedRoute>} />
+          <Route path="/admin/rattrapages" element={<ProtectedRoute><RattrapageAdmin /></ProtectedRoute>} />
+          <Route path="/admin/microsoft" element={<ProtectedRoute><MicrosoftIntegration /></ProtectedRoute>} />
+          <Route path="/admin/admins" element={<ProtectedRoute><AdminList /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>

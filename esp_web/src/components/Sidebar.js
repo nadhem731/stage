@@ -6,6 +6,7 @@ import '../style/sidebar.css';
 function Sidebar({ activeMenu, setActiveMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  
   // État initial des catégories étendues selon le rôle
   const getInitialExpandedState = () => {
     const userRole = user?.role || 'Enseignant';
@@ -55,6 +56,8 @@ function Sidebar({ activeMenu, setActiveMenu }) {
           { id: 'Classe', label: 'Classe', icon: '📚', notifications: 0 ,onClick: () => navigate('/admin/classe')},
           { id: 'Affectation', label: 'Affectation', icon: '🔗', notifications: 0 ,onClick: () => navigate('/admin/affectation')},
           { id: 'Planning', label: 'Planning', icon: '📅', notifications: 0,onClick: () => navigate('/admin/planning')},
+          { id: 'rattrapage-admin', label: 'Gestion Rattrapages', icon: '📝', notifications: 0, onClick: () => navigate('/admin/rattrapages')},
+          // { id: 'microsoft-integration', label: 'Intégration Microsoft', icon: '🔗', notifications: 0, onClick: () => navigate('/admin/microsoft')},
         ]
       },
       {
@@ -64,6 +67,8 @@ function Sidebar({ activeMenu, setActiveMenu }) {
         roles: ['Admin'], // Seuls les admins peuvent voir cette section
         items: [
           { id: 'settings', label: 'Paramètres', icon: '⚙️', notifications: 0 },
+          { id: 'admin-list', label: 'Liste des Admins', icon: '👥', notifications: 0, onClick: () => navigate('/admin/admins')},
+
         ]
       }
     ];
@@ -79,6 +84,7 @@ function Sidebar({ activeMenu, setActiveMenu }) {
           { id: 'dashboard', label: 'Tableau de bord', icon: '📊', notifications: 0 , onClick: () => navigate('/dashboard')},
           { id: 'disponibilite', label: 'Mes Disponibilités', icon: '📋', notifications: 0, onClick: () => navigate('/enseignant/disponibilite') },
           { id: 'planning-enseignant', label: 'Mon Planning', icon: '📅', notifications: 0, onClick: () => navigate('/enseignant/planning') },
+          { id: 'rattrapage-demande', label: 'Demandes de Rattrapage', icon: '📝', notifications: 0, onClick: () => navigate('/enseignant/rattrapage') },
         ]
       },
       {
@@ -151,11 +157,6 @@ function Sidebar({ activeMenu, setActiveMenu }) {
         <div className="header-main">
           <h1 className="sidebar-title">ESPRIT</h1>
         </div>
-        {getTotalNotifications() > 0 && (
-          <div className="notification-badge">
-            {getTotalNotifications()}
-          </div>
-        )}
       </div>
       
       <div className="sidebar-content">
@@ -194,9 +195,13 @@ function Sidebar({ activeMenu, setActiveMenu }) {
       </div>
       
       <div className="sidebar-user">
-        <div className="user-info">
+        <div className="user-info" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
           <div className="user-avatar">
-            {getUserAvatar()}
+            {user?.imageUrl ? (
+              <img src={user.imageUrl} alt="Avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              getUserAvatar()
+            )}
           </div>
           <div className="user-details">
             <p className="user-name">{getUserDisplayName()}</p>

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Select from 'react-select';
-import Sidebar from '../Sidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { ROLES } from '../../config/roles';
+import AdminLayout from './AdminLayout';
 import '../../style/etudient.css';
 import '../../style/table.css';
 
@@ -151,35 +151,6 @@ const Affectation = () => {
         }
     };
 
-    const handleEditSubmit = async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-        try {
-            const payload = {
-                userId: editData.userId,
-                classeId: editData.classeId,
-                dateAffectation: editData.dateAffectation,
-            };
-
-            await axios.put(`/api/affectations/${editId}`, payload, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            alert(`Affectation modifiée avec succès!`);
-            setEditId(null);
-            setShowStudentForm(false);
-            setShowTeacherForm(false);
-            fetchInitialData(); // Refresh data
-        } catch (err) {
-            setError(`Erreur lors de la modification de l'affectation`);
-            console.error(err);
-        }
-    };
 
     const handleDelete = async (id) => {
         if (window.confirm('Voulez-vous vraiment supprimer cette affectation ?')) {
@@ -197,19 +168,32 @@ const Affectation = () => {
     };
 
     const studentAffectations = affectations.filter(aff => aff.user && aff.user.role && aff.user.role.typeRole === ROLES.ETUDIANT);
-    const teacherAffectations = affectations.filter(aff => aff.user && aff.user.role && aff.user.role.typeRole === ROLES.ENSEIGNANT);
+
+    if (loading) {
+        return (
+            <AdminLayout
+                activeMenu="Affectation"
+                setActiveMenu={() => {}}
+                loading={true}
+                loadingMessage="Chargement des affectations..."
+            />
+        );
+    }
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-            <Sidebar activeMenu="Affectation" setActiveMenu={() => {}} />
-            <main style={{ 
-        flex: 1, 
-        padding: '2rem', 
-        marginLeft: '280px',
-        minWidth: 0,
-        position: 'relative',
-        zIndex: 1
-      }}>
+        <AdminLayout
+            activeMenu="Affectation"
+            setActiveMenu={() => {}}
+            title="Gestion des Affectations"
+            subtitle="Affectation des étudiants et enseignants aux classes"
+        >
+            <div style={{ 
+                flex: 1, 
+                padding: '2rem', 
+                minWidth: 0,
+                position: 'relative',
+                zIndex: 1
+            }}>
                 <div className="tabs" style={{ marginBottom: '2rem', borderBottom: '1px solid #ddd', display: 'flex' }}>
                     <button 
                       style={{ padding: '1rem', border: 'none', background: activeTab === 'student' ? '#fff' : 'transparent', borderBottom: activeTab === 'student' ? '3px solid #CB0920' : 'none', cursor: 'pointer', fontWeight: '600' }}
@@ -232,8 +216,8 @@ const Affectation = () => {
                     <>
                         {activeTab === 'student' && (
                             <div>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                    <h3 style={{ marginTop: '2rem' }}>Affectations Étudiants</h3>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                                    <h2 className="section-title">Affectations Étudiants</h2>
                                     <button
                                         className="add-etudient-btn"
                                         title="Ajouter une affectation"
@@ -271,16 +255,19 @@ const Affectation = () => {
                                         marginRight: 'auto',
                                         marginTop: 16
                                     }}>
-                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                            <label htmlFor="userId">Etudiant:</label>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <label htmlFor="userId" style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Etudiant:</label>
                                             <Select
                                                 name="userId"
                                                 options={students.map(user => ({ value: user.idUser, label: `${user.nom} ${user.prenom}` }))}
                                                 onChange={handleChange}
                                                 isClearable
                                                 isSearchable
-                                                placeholder="Sélectionner..."
-                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                                placeholder="Sélectionner un étudiant..."
+                                                styles={{ 
+                                                    container: base => ({ ...base, width: '100%' }),
+                                                    control: base => ({ ...base, minHeight: 40, borderColor: '#ddd' })
+                                                }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
@@ -310,13 +297,13 @@ const Affectation = () => {
                                         </button>
                                     </form>
                                 )}
-                                <table className="table-dashboard">
+                                <table className="table-dashboard affectations-table">
                                     <thead>
                                         <tr>
                                             <th>Étudiant</th>
                                             <th>Classe</th>
-                                            <th>Date</th>
-                                            <th>Action</th>
+                                            <th>Date d'affectation</th>
+                                            <th className="actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -344,8 +331,8 @@ const Affectation = () => {
 
                         {activeTab === 'teacher' && (
                             <div>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                    <h3 style={{ marginTop: '2rem' }}>Affectations Enseignants</h3>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                                    <h2 className="section-title">Affectations Enseignants</h2>
                                     <button
                                         className="add-etudient-btn"
                                         title="Ajouter une affectation"
@@ -383,16 +370,19 @@ const Affectation = () => {
                                         marginRight: 'auto',
                                         marginTop: 16
                                     }}>
-                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                                            <label htmlFor="userId">Enseignant:</label>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <label htmlFor="userId" style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Enseignant:</label>
                                             <Select
                                                 name="userId"
                                                 options={teachers.map(user => ({ value: user.idUser, label: `${user.nom} ${user.prenom}` }))}
                                                 onChange={handleChange}
                                                 isClearable
                                                 isSearchable
-                                                placeholder="Sélectionner..."
-                                                styles={{ container: base => ({ ...base, flex: 1, minWidth: 120 }) }}
+                                                placeholder="Sélectionner un enseignant..."
+                                                styles={{ 
+                                                    container: base => ({ ...base, width: '100%' }),
+                                                    control: base => ({ ...base, minHeight: 40, borderColor: '#ddd' })
+                                                }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
@@ -474,8 +464,8 @@ const Affectation = () => {
                         )}
                     </>
                 )}
-            </main>
-        </div>
+            </div>
+        </AdminLayout>
     );
 };
 

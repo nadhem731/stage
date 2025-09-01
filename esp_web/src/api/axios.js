@@ -6,7 +6,8 @@ const instance = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  withCredentials: false
+  withCredentials: false,
+  timeout: 30000 // 30 secondes pour les opérations longues comme l'envoi d'email
 });
 
 // Liste des chemins qui ne nécessitent pas d'authentification
@@ -30,6 +31,20 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Intercepteur de réponse pour gérer les erreurs de timeout et autres
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED') {
+      console.error('Timeout de la requête - l\'opération peut avoir réussi côté serveur');
+      error.message = 'Timeout de la requête. Veuillez rafraîchir la page pour vérifier si l\'opération a réussi.';
+    } else if (error.response?.status === 500) {
+      console.error('Erreur serveur 500:', error.response.data);
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default instance;

@@ -37,12 +37,25 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateToken(String identifiant, String role, Long userId) {
+        // Assurez-vous que le rôle est préfixé par "ROLE_" et en majuscules pour Spring Security
+        String formattedRole = "ROLE_" + role.toUpperCase();
+        return Jwts.builder()
+                .setSubject(identifiant)
+                .claim("role", formattedRole) // Stocke le rôle formaté
+                .claim("userId", userId) // Ajouter l'ID utilisateur
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public String getIdentifiantFromToken(String token) {
         return getAllClaimsFromToken(token).getSubject();
     }
 
     // Ajout de la méthode manquante pour extraire tous les claims du token
-    private Claims getAllClaimsFromToken(String token) {
+    public Claims getAllClaimsFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
@@ -57,6 +70,15 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
         return claims.get("role", String.class);
+    }
+
+    public Long extractUserId(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        return claims.get("userId", Long.class);
+    }
+
+    public String extractRole(String token) {
+        return getRoleFromToken(token);
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {

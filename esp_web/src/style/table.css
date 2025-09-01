@@ -1,25 +1,388 @@
+/* Import des variables CSS de dashboard.css */
+:root {
+  --red-main: #CB0920;
+  --red-hover: #e53935;
+  --red-light: #ffebee;
+  --black-main: #111111;
+  --black-soft: #333333;
+  --white-main: #ffffff;
+  --white-soft: #f8f9fa;
+  --gray-light: #f5f5f5;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+  --blue-main: #1976d2;
+  --green-main: #388e3c;
+  --orange-main: #f57c00;
+  --purple-main: #7b1fa2;
+}
+
+/* Table styles */
 .table-dashboard {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    overflow: hidden;
+  width: 100% !important;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  table-layout: fixed !important;
+  min-width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.table-dashboard th,
+.table-dashboard td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  word-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.table-dashboard th {
+  background: var(--red-main);
+  color: white;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-dashboard tr:hover {
+  background-color: #f8f9fa;
+}
+
+.table-dashboard tr:last-child td {
+  border-bottom: none;
+}
+
+/* Action column and buttons */
+.actions-column {
+  width: auto !important;
+  min-width: 120px;
+}
+
+.actions-cell {
+  text-align: center;
+  white-space: nowrap;
+  width: auto !important;
+  min-width: fit-content;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Status cell styling */
+.status-cell {
+  text-align: center;
+  vertical-align: middle;
+  position: relative;
+}
+
+.status-select {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 120px;
+}
+
+.status-select.actif {
+  background-color: #dcfce7;
+  color: #166534;
+  border-color: #16a34a;
+}
+
+.status-select.inactif {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #dc2626;
+}
+
+.status-select.suspendu {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.status-select:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status-loading {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+}
+
+.btn-edit {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
+.btn-edit:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.btn-edit,
+.btn-delete,
+.btn-detail {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 70px;
+  text-align: center;
+  flex-shrink: 0;
+  display: inline-block;
+  height: 30px;
+  line-height: 18px;
+}
+
+.btn-delete {
+  background: var(--red-main);
+  color: #fff;
+}
+
+.btn-delete:hover {
+  background: #a00818;
+}
+
+.btn-detail {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-detail:hover {
+  background: #0056b3;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .table-dashboard {
+    font-size: 0.9rem;
   }
   
   .table-dashboard th,
   .table-dashboard td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 8px 10px;
   }
-  
+
+  .actions-column {
+    width: auto;
+    min-width: 100px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .btn-edit,
+  .btn-delete,
+  .btn-detail {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+  }
+
+  /* Reset specific widths on mobile for better flexibility */
   .table-dashboard th {
-    background-color: #CB0920;
-    font-weight: 600;
-    color: #fff;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-dashboard {
+    font-size: 0.8rem;
   }
   
-  .table-dashboard tbody tr:hover {
-    background-color: #f5f5f5;
+  .table-dashboard th,
+  .table-dashboard td {
+    padding: 6px 8px;
   }
+  
+  .actions-column {
+    width: auto;
+    min-width: 80px;
+  }
+
+  .btn-edit,
+  .btn-delete,
+  .btn-detail {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+  }
+
+  /* Reset all specific widths on very small screens */
+  .table-dashboard th {
+    width: auto !important;
+  }
+}
+
+/* Table container for better responsive handling */
+.table-container {
+  width: 100% !important;
+  overflow-x: auto;
+  display: block;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Force table to use full width */
+.table-dashboard {
+  display: table !important;
+  width: 100% !important;
+}
+
+.table-dashboard th,
+.table-dashboard td {
+  display: table-cell !important;
+}
+
+/* Force all tables to stretch to container width */
+.table-container .table-dashboard {
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
+/* Ensure table cells use their assigned widths */
+.table-dashboard th {
+  box-sizing: border-box !important;
+}
+
+.table-dashboard td {
+  box-sizing: border-box !important;
+}
+
+/* Remove conflicting width rules */
+
+/* Students table - 8 columns optimized distribution */
+.table-dashboard.students-table {
+  table-layout: fixed !important;
+}
+.table-dashboard.students-table th:nth-child(1) { width: 12%; } /* Identifiant */
+.table-dashboard.students-table th:nth-child(2) { width: 12%; } /* Nom */
+.table-dashboard.students-table th:nth-child(3) { width: 12%; } /* Prénom */
+.table-dashboard.students-table th:nth-child(4) { width: 18%; } /* Email */
+.table-dashboard.students-table th:nth-child(5) { width: 12%; } /* Téléphone */
+.table-dashboard.students-table th:nth-child(6) { width: 12%; } /* CIN */
+.table-dashboard.students-table th:nth-child(7) { width: 12%; } /* Statut */
+.table-dashboard.students-table th:nth-child(8) { width: 10%; } /* Actions */
+
+/* Teachers table - 9 columns optimized distribution */
+.table-dashboard.teachers-table {
+  table-layout: fixed !important;
+}
+.teachers-table th:nth-child(1) { width: 10%; } /* Identifiant */
+.teachers-table th:nth-child(2) { width: 10%; } /* Nom */
+.teachers-table th:nth-child(3) { width: 10%; } /* Prénom */
+.teachers-table th:nth-child(4) { width: 16%; } /* Email */
+.teachers-table th:nth-child(5) { width: 10%; } /* Téléphone */
+.teachers-table th:nth-child(6) { width: 10%; } /* CIN */
+.teachers-table th:nth-child(7) { width: 10%; } /* Matière */
+.teachers-table th:nth-child(8) { width: 14%; } /* Statut */
+.teachers-table th:nth-child(9) { width: 10%; } /* Actions */
+
+/* Rooms table - 6 columns equal distribution */
+.table-dashboard.rooms-table {
+  table-layout: fixed !important;
+}
+.table-dashboard.rooms-table th:nth-child(1) { width: 16.66% !important; }
+.table-dashboard.rooms-table th:nth-child(2) { width: 16.66% !important; }
+.table-dashboard.rooms-table th:nth-child(3) { width: 16.66% !important; }
+.table-dashboard.rooms-table th:nth-child(4) { width: 16.66% !important; }
+.table-dashboard.rooms-table th:nth-child(5) { width: 16.66% !important; }
+.table-dashboard.rooms-table th:nth-child(6) { width: 16.70% !important; }
+
+/* Classes table - 3 columns distribution */
+.table-dashboard.classes-table {
+  table-layout: fixed !important;
+}
+.table-dashboard.classes-table th:nth-child(1) { width: 33.33% !important; }
+.table-dashboard.classes-table th:nth-child(2) { width: 33.33% !important; }
+.table-dashboard.classes-table th:nth-child(3) { width: 33.34% !important; }
+
+/* Affectations table - 4 columns equal distribution */
+.table-dashboard.affectations-table {
+  table-layout: fixed !important;
+}
+.table-dashboard.affectations-table th:nth-child(1) { width: 25% !important; }
+.table-dashboard.affectations-table th:nth-child(2) { width: 25% !important; }
+.table-dashboard.affectations-table th:nth-child(3) { width: 25% !important; }
+.table-dashboard.affectations-table th:nth-child(4) { width: 25% !important; }
+
+/* Planning table - 6 columns equal distribution */
+.table-dashboard.planning-table {
+  table-layout: fixed !important;
+}
+.table-dashboard.planning-table th:nth-child(1) { width: 16.66% !important; }
+.table-dashboard.planning-table th:nth-child(2) { width: 16.66% !important; }
+.table-dashboard.planning-table th:nth-child(3) { width: 16.66% !important; }
+.table-dashboard.planning-table th:nth-child(4) { width: 16.66% !important; }
+.table-dashboard.planning-table th:nth-child(5) { width: 16.66% !important; }
+.table-dashboard.planning-table th:nth-child(6) { width: 16.70% !important; }
+
+.planning-time-column {
+  padding: 1rem !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  min-width: 120px !important;
+}
+
+.planning-day-column {
+  padding: 1rem !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  min-width: 180px !important;
+}
+
+/* Teachers detail table - 4 columns */
+.table-dashboard.teachers-detail-table th:nth-child(1) { width: 25%; }
+.table-dashboard.teachers-detail-table th:nth-child(2) { width: 25%; }
+.table-dashboard.teachers-detail-table th:nth-child(3) { width: 25%; }
+.table-dashboard.teachers-detail-table th:nth-child(4) { width: 25%; }
+
+/* Students detail table - 4 columns */
+.table-dashboard.students-detail-table th:nth-child(1) { width: 25%; }
+.table-dashboard.students-detail-table th:nth-child(2) { width: 25%; }
+.table-dashboard.students-detail-table th:nth-child(3) { width: 30%; }
+.table-dashboard.students-detail-table th:nth-child(4) { width: 20%; }
+
+/* Assurer que les colonnes d'action restent visibles */
+.table-dashboard th:last-child,
+.table-dashboard td:last-child {
+  white-space: nowrap;
+  min-width: 120px;
+}

@@ -1,0 +1,105 @@
+/* Layout global pour toutes les pages admin */
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #f8f9fa;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.admin-content {
+    flex: 1;
+    margin-left: 260px; /* Largeur de la sidebar */
+    padding: 2rem;
+    overflow-y: auto;
+    background: #ffffff;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+/* Responsive - sur mobile, pas de margin-left */
+@media (max-width: 1200px) {
+    .admin-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+}
+
+/* Styles communs pour les headers admin */
+.admin-page-header {
+    background: #CB0920;
+    color: #ffffff;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-left: 4px solid #CB0920;
+    animation: slideInFromTop 0.8s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-page-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+}
+
+.admin-page-title {
+    font-size: 2.5rem;
+    margin: 0 0 10px 0;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    background: linear-gradient(45deg, #fff, #f0f8ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.admin-page-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Animations communes */
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Container principal pour le contenu */
+.admin-main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #111111;
+    animation: fadeInUp 0.8s ease-out;
+}

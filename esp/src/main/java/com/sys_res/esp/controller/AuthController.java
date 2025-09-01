@@ -61,22 +61,25 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
             return ResponseEntity.badRequest().body(error);
         }
 
-        logger.info("Looking for existing role: {}", signupRequest.getRoleTypeRole());
-        // Vérifier si le rôle existe, sinon le créer
-        Role role = roleRepository.findById(signupRequest.getRoleTypeRole())
+        // Forcer le rôle par défaut à "Admin" pour tous les nouveaux utilisateurs
+        String defaultRole = "Admin";
+        logger.info("Setting default role to: {}", defaultRole);
+        
+        // Vérifier si le rôle Admin existe, sinon le créer
+        Role role = roleRepository.findById(defaultRole)
                 .orElseGet(() -> {
-                    logger.info("Role not found in database, creating new role: {}", signupRequest.getRoleTypeRole());
+                    logger.info("Role not found in database, creating new role: {}", defaultRole);
                     try {
                         Role newRole = new Role();
-                        newRole.setTypeRole(signupRequest.getRoleTypeRole());
+                        newRole.setTypeRole(defaultRole);
                         Role savedRole = roleRepository.save(newRole);
                         logger.info("New role created successfully: {}", savedRole.getTypeRole());
                         return savedRole;
                     } catch (Exception roleError) {
-                        logger.error("Error creating role {}: {}", signupRequest.getRoleTypeRole(), roleError.getMessage());
+                        logger.error("Error creating role {}: {}", defaultRole, roleError.getMessage());
                         // Si on ne peut pas créer le rôle, essayer de le récupérer à nouveau
-                        return roleRepository.findById(signupRequest.getRoleTypeRole())
-                                .orElseThrow(() -> new RuntimeException("Role not found and could not be created: " + signupRequest.getRoleTypeRole()));
+                        return roleRepository.findById(defaultRole)
+                                .orElseThrow(() -> new RuntimeException("Role not found and could not be created: " + defaultRole));
                     }
                 });
         
@@ -106,7 +109,7 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
 
         try {
             logger.info("Generating JWT token for user: {}", user.getIdentifiant());
-            String token = jwtUtil.generateToken(user.getIdentifiant(), role.getTypeRole());
+            String token = jwtUtil.generateToken(user.getIdentifiant(), role.getTypeRole(), user.getIdUser());
             logger.info("JWT token generated successfully");
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
@@ -153,6 +156,14 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
                 return ResponseEntity.status(401).body(error);
             }
             
+            // Vérifier le statut du compte
+            if (!"ACTIF".equals(user.getStatusCompte())) {
+                logger.warn("Account not active for user: {} - Status: {}", user.getIdentifiant(), user.getStatusCompte());
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Compte " + user.getStatusCompte().toLowerCase() + ". Contactez l'administrateur.");
+                return ResponseEntity.status(401).body(error);
+            }
+            
             logger.info("User found, attempting authentication");
             
             authenticationManager.authenticate(
@@ -162,10 +173,10 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
             String roleType = user.getRole() != null ? user.getRole().getTypeRole() : "User";
             logger.info("Generating token for user: {} with role: {}", user.getIdentifiant(), roleType);
             
-            String token = jwtUtil.generateToken(user.getIdentifiant(), roleType);
+            String token = jwtUtil.generateToken(user.getIdentifiant(), roleType, user.getIdUser());
             
             logger.info("Login successful for user: {}", user.getIdentifiant());
-            return ResponseEntity.ok(new AuthResponse(token, user.getIdentifiant(), roleType, user.getNom(), user.getPrenom()));
+            return ResponseEntity.ok(new AuthResponse(token, user.getIdentifiant(), roleType, user.getNom(), user.getPrenom(), user.getTel(), user.getCin(), user.getEmail(), user.getMatiere()));
         } catch (Exception e) {
             logger.error("Login failed for identifiant {}: {}", loginRequest.getIdentifiant(), e.getMessage(), e);
             Map<String, String> error = new HashMap<>();
@@ -191,11 +202,16 @@ public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest signupRequest)
             
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("id", user.getIdUser());
+            userInfo.put("idUser", user.getIdUser());
             userInfo.put("email", user.getEmail());
             userInfo.put("nom", user.getNom());
             userInfo.put("prenom", user.getPrenom());
             userInfo.put("tel", user.getTel());
+            userInfo.put("cin", user.getCin());
             userInfo.put("identifiant", user.getIdentifiant());
+            userInfo.put("matiere", user.getMatiere());
+            userInfo.put("imageUrl", user.getImageUrl());
+            userInfo.put("statusCompte", user.getStatusCompte());
             userInfo.put("role", user.getRole() != null ? user.getRole().getTypeRole() : "User");
             
             return ResponseEntity.ok(userInfo);
@@ -214,13 +230,21 @@ class AuthResponse {
     private final String role;
     private final String nom;
     private final String prenom;
+    private final String tel;
+    private final String cin;
+    private final String identifiant;
+    private final String matiere;
 
-    public AuthResponse(String token, String email, String role, String nom, String prenom) {
+    public AuthResponse(String token, String identifiant, String role, String nom, String prenom, String tel, String cin, String email, String matiere) {
         this.token = token;
-        this.email = email;
+        this.identifiant = identifiant;
         this.role = role;
         this.nom = nom;
         this.prenom = prenom;
+        this.tel = tel;
+        this.cin = cin;
+        this.email = email;
+        this.matiere = matiere;
     }
 
     public String getToken() {
@@ -241,5 +265,21 @@ class AuthResponse {
 
     public String getPrenom() {
         return prenom;
+    }
+
+    public String getTel() {
+        return tel;
+    }
+
+    public String getCin() {
+        return cin;
+    }
+
+    public String getIdentifiant() {
+        return identifiant;
+    }
+
+    public String getMatiere() {
+        return matiere;
     }
 }

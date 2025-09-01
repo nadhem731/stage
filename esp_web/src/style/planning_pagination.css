@@ -1,0 +1,201 @@
+/* Styles pour la pagination par semaine dans planning_ens.js */
+
+.week-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    margin: 1.5rem 0;
+    border: 2px solid #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.week-pagination:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+.week-pagination-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 160px;
+    justify-content: center;
+}
+
+.week-pagination-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.week-pagination-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.week-pagination-btn:disabled {
+    background: linear-gradient(135deg, #d1d5db, #9ca3af);
+    color: #6b7280;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.week-pagination-info {
+    text-align: center;
+    font-weight: 700;
+    color: #374151;
+    flex: 1;
+    margin: 0 2rem;
+}
+
+.week-pagination-title {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.week-pagination-date {
+    font-size: 1.125rem;
+    margin-bottom: 0.25rem;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.week-pagination-counter {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    background: rgba(156, 163, 175, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    display: inline-block;
+    margin-top: 0.25rem;
+}
+
+/* Styles pour les différentes sections */
+.week-pagination.cours {
+    border-color: #059669;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+}
+
+.week-pagination.cours .week-pagination-btn {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.week-pagination.cours .week-pagination-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #047857, #065f46);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+.week-pagination.rattrapages {
+    border-color: #dc2626;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+}
+
+.week-pagination.rattrapages .week-pagination-btn {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.week-pagination.rattrapages .week-pagination-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.week-pagination.soutenances {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+}
+
+.week-pagination.soutenances .week-pagination-btn {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.week-pagination.soutenances .week-pagination-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #6d28d9, #5b21b6);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .week-pagination {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+    }
+    
+    .week-pagination-info {
+        margin: 0;
+        order: -1;
+    }
+    
+    .week-pagination-btn {
+        min-width: 140px;
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .week-pagination-date {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .week-pagination-btn {
+        min-width: 120px;
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+    }
+    
+    .week-pagination-date {
+        font-size: 0.9rem;
+    }
+    
+    .week-pagination-title {
+        font-size: 0.8rem;
+    }
+}
+
+/* Animation pour le changement de semaine */
+.week-transition-enter {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+.week-transition-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.week-transition-exit {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.week-transition-exit-active {
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 300ms, transform 300ms;
+}
