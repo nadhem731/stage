@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../../style/planning_ens.css';
 import '../../style/planning_pagination.css';
 import '../../style/dashboard.css';
@@ -121,7 +121,7 @@ const PlanningEnseignant = () => {
     };
 
     // Récupération des informations de l'utilisateur connecté
-    const fetchCurrentUser = async () => {
+    const fetchCurrentUser = useCallback(async () => {
         try {
             const token = getAuthToken();
             if (!token) return;
@@ -142,10 +142,10 @@ const PlanningEnseignant = () => {
         } catch (error) {
             console.error('Erreur récupération utilisateur:', error);
         }
-    };
+    }, []);
 
     // Récupération des plannings de cours pour l'enseignant connecté
-    const fetchPlanningCours = async () => {
+    const fetchPlanningCours = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -179,27 +179,35 @@ const PlanningEnseignant = () => {
             console.log('DEBUG: Type des données:', typeof data);
             console.log('DEBUG: Est-ce un tableau?', Array.isArray(data));
             console.log('DEBUG: Longueur:', data?.length);
+            console.log('DEBUG: Structure complète:', JSON.stringify(data, null, 2));
             
             // Attendu: uniquement les cours via cet endpoint
             if (data.cours) {
+                console.log('DEBUG: Cours trouvés:', data.cours.length);
+                console.log('DEBUG: Premier cours:', data.cours[0]);
                 setPlanningCours(data.cours);
             } else if (Array.isArray(data)) {
+                console.log('DEBUG: Données sous forme de tableau, longueur:', data.length);
                 // Filtrer pour exclure les rattrapages de l'onglet cours
                 const coursUniquement = data.filter(item => item.source !== 'rattrapage');
+                console.log('DEBUG: Cours filtrés:', coursUniquement.length);
                 setPlanningCours(coursUniquement);
             } else {
+                console.log('DEBUG: Aucun cours trouvé, initialisation avec tableau vide');
                 setPlanningCours([]);
             }
+            
+            console.log('DEBUG: État final planningCours mis à jour');
         } catch (error) {
             console.error('Erreur:', error);
             setError(error.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Récupération des rattrapages approuvés depuis la table Rattrapage
-    const fetchPlanningRattrapages = async () => {
+    const fetchPlanningRattrapages = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -247,10 +255,10 @@ const PlanningEnseignant = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Récupération des plannings de soutenances pour l'enseignant connecté
-    const fetchPlanningSoutenances = async () => {
+    const fetchPlanningSoutenances = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -306,7 +314,7 @@ const PlanningEnseignant = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Chargement initial des données
     useEffect(() => {
@@ -399,8 +407,11 @@ const PlanningEnseignant = () => {
             });
         });
 
-        // Ajouter les cours
-        planningCours.forEach(cours => {
+        // Filtrer les cours par la semaine actuelle
+        const coursFiltered = filterByWeek(planningCours, currentWeekCours, 'dateDebut');
+        
+        // Ajouter les cours filtrés
+        coursFiltered.forEach(cours => {
             const dayName = getDayNameFromDate(cours.dateDebut);
             const timeSlot = getTimeSlotForTime(cours.heureDebut);
             
@@ -969,8 +980,9 @@ const PlanningEnseignant = () => {
                                                                 </div>
                                                             </td>
                                                             {weekDays.map(day => {
-                                                                // Trouver UNIQUEMENT les cours pour ce jour et ce créneau
-                                                                const itemsForSlot = planningCours.filter(item => {
+                                                                // Filtrer les cours par la semaine actuelle puis par jour et créneau
+                                                                const coursFiltered = filterByWeek(planningCours, currentWeekCours, 'dateDebut');
+                                                                const itemsForSlot = coursFiltered.filter(item => {
                                                                     const itemDay = getDayNameFromDate(item.dateDebut);
                                                                     const itemSlot = getTimeSlotForTime(item.heureDebut);
                                                                     return itemDay === day && itemSlot === slot.label;
@@ -1255,8 +1267,9 @@ const PlanningEnseignant = () => {
                                                                 </div>
                                                             </td>
                                                             {weekDays.map(day => {
-                                                                // Trouver les soutenances pour ce jour et ce créneau
-                                                                const soutenancesForSlot = planningSoutenances.filter(soutenance => {
+                                                                // Filtrer les soutenances par la semaine actuelle puis par jour et créneau
+                                                                const soutenancesFiltered = filterByWeek(planningSoutenances, currentWeekSoutenances, 'date');
+                                                                const soutenancesForSlot = soutenancesFiltered.filter(soutenance => {
                                                                     const soutenanceDay = soutenance.jour || getDayNameFromDate(soutenance.date);
                                                                     const soutenanceSlot = getTimeSlotForTime(soutenance.heureDebut || soutenance.heureTime);
                                                                     return soutenanceDay === day && soutenanceSlot === slot.label;

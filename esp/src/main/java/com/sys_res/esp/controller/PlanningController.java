@@ -96,22 +96,42 @@ public class PlanningController {
             Users currentUser = usersRepository.findByIdentifiant(username)
                                                .orElseThrow(() -> new RuntimeException("User not found with identifiant: " + username));
             
-            System.out.println("DEBUG: User trouvé - ID: " + currentUser.getIdUser() + ", Nom: " + currentUser.getNom());
+            System.out.println("DEBUG: User trouvé - ID: " + currentUser.getIdUser() + ", Nom: " + currentUser.getNom() + " " + currentUser.getPrenom());
             
-            // Récupérer les plannings normaux
+            // Récupérer TOUS les plannings pour diagnostic
+            List<Planning> tousLesPlannings = planningRepository.findAll();
+            System.out.println("DEBUG: Total plannings dans la base: " + tousLesPlannings.size());
+            
+            // Afficher les détails des plannings pour diagnostic
+            for (Planning p : tousLesPlannings) {
+                System.out.println("DEBUG: Planning ID=" + p.getIdPlanning() + 
+                    ", UserID=" + (p.getUser() != null ? p.getUser().getIdUser() : "NULL") + 
+                    ", UserName=" + (p.getUser() != null ? p.getUser().getNom() + " " + p.getUser().getPrenom() : "NULL") +
+                    ", Date=" + p.getDateDebut() + 
+                    ", Classe=" + (p.getClasse() != null ? p.getClasse().getNomClasse() : "NULL"));
+            }
+            
+            // Récupérer les plannings pour cet enseignant
             List<Planning> plannings = planningRepository.findByUserId(currentUser.getIdUser());
-            System.out.println("DEBUG: Nombre de plannings trouvés: " + plannings.size());
+            System.out.println("DEBUG: Plannings trouvés pour l'enseignant ID " + currentUser.getIdUser() + ": " + plannings.size());
             
-            // Séparer les cours normaux et les rattrapages
-            // Désormais, on ne distingue plus les rattrapages: retourner tous les plannings dans "cours"
+            // Si aucun planning trouvé, essayer une recherche alternative
+            if (plannings.isEmpty()) {
+                System.out.println("DEBUG: Aucun planning trouvé avec findByUserId, essai de recherche alternative...");
+                plannings = tousLesPlannings.stream()
+                    .filter(p -> p.getUser() != null && p.getUser().getIdUser().equals(currentUser.getIdUser()))
+                    .collect(java.util.stream.Collectors.toList());
+                System.out.println("DEBUG: Plannings trouvés avec recherche alternative: " + plannings.size());
+            }
+            
+            // Créer la réponse
             List<Planning> coursNormaux = new ArrayList<>(plannings);
             List<Planning> rattrapages = new ArrayList<>();
-            System.out.println("DEBUG: Total plannings (cours unifiés): " + coursNormaux.size());
+            System.out.println("DEBUG: Total plannings à retourner: " + coursNormaux.size());
 
-            // Créer la réponse en conservant la forme JSON attendue par le frontend
             Map<String, Object> response = new HashMap<>();
             response.put("cours", coursNormaux);
-            response.put("rattrapages", rattrapages); // liste vide pour compatibilité
+            response.put("rattrapages", rattrapages);
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {

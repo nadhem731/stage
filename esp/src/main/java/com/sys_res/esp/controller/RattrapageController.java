@@ -337,6 +337,7 @@ public class RattrapageController {
             // Si la demande est approuvée, supprimer la séance d'origine et créer le rattrapage
             if ("approuve".equals(nouveauStatut)) {
                 supprimerSeanceOriginale(rattrapage);
+                supprimerAnciensRattrapagesValides(rattrapage);
                 creerSeancePlanning(rattrapage);
                 
                 // Envoyer les emails de confirmation
@@ -512,6 +513,32 @@ public class RattrapageController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Erreur lors de l'analyse: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Supprimer les anciens rattrapages validés pour éviter les doublons
+     */
+    private void supprimerAnciensRattrapagesValides(Rattrapage nouveauRattrapage) {
+        try {
+            // Récupérer tous les plannings et filtrer manuellement
+            List<Planning> tousLesPlannings = planningRepository.findAll();
+            List<Planning> anciensRattrapages = tousLesPlannings.stream()
+                .filter(p -> p.getUser() != null && p.getUser().getIdUser().equals(nouveauRattrapage.getIdEnseignant()))
+                .filter(p -> p.getClasse() != null && p.getClasse().getNomClasse().equals(nouveauRattrapage.getClasse()))
+                .filter(p -> p.getDateDebut() != null && p.getDateDebut().equals(Date.valueOf(nouveauRattrapage.getDateRattrapageProposee())))
+                .filter(p -> "rattrapage".equalsIgnoreCase(p.getTypePlanning()))
+                .collect(Collectors.toList());
+            
+            if (!anciensRattrapages.isEmpty()) {
+                System.out.println("DEBUG: Suppression de " + anciensRattrapages.size() + 
+                    " anciens rattrapages pour l'enseignant " + nouveauRattrapage.getIdEnseignant() + 
+                    " classe " + nouveauRattrapage.getClasse());
+                planningRepository.deleteAll(anciensRattrapages);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la suppression des anciens rattrapages: " + e.getMessage());
         }
     }
 

@@ -152,6 +152,13 @@ public class SoutenanceController {
             System.out.println("DEBUG: Données reçues pour sauvegarde: " + request);
             System.out.println("DEBUG: Nombre de soutenances à sauvegarder: " + planningSoutenances.size());
             
+            // Supprimer toutes les anciennes soutenances avant de sauvegarder les nouvelles
+            List<Soutenance> existingSoutenances = soutenanceRepository.findAll();
+            if (!existingSoutenances.isEmpty()) {
+                System.out.println("DEBUG: Suppression de " + existingSoutenances.size() + " anciennes soutenances");
+                soutenanceRepository.deleteAll(existingSoutenances);
+            }
+            
             for (Map<String, Object> soutenanceData : planningSoutenances) {
                 System.out.println("DEBUG: Données soutenance: " + soutenanceData);
                 Soutenance soutenance = new Soutenance();

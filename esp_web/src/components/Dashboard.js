@@ -386,6 +386,23 @@ function Dashboard() {
               </p>
             </div>
             
+            {/* Header moderne avec recherche et profil */}
+            <div className="dashboard-header">
+              <div className="search-bar">
+                <span>🔍</span>
+                <input type="text" placeholder="Rechercher..." />
+              </div>
+              <div className="user-profile">
+                <div className="user-avatar">
+                  {user?.prenom ? user.prenom.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div className="user-info">
+                  <h4>{user?.prenom || 'Utilisateur'}</h4>
+                  <p>{user?.role || 'Membre'}</p>
+                </div>
+              </div>
+            </div>
+            
             {user?.role === 'Enseignant' ? (
               // Tableau de bord pour les enseignants avec KPIs basés sur les données réelles
               <>
@@ -638,6 +655,10 @@ function Dashboard() {
                         {kpiData.loading ? '...' : kpiData.totalEtudiants}
                       </h3>
                       <p className="stat-label">Étudiants</p>
+                      <div className="stat-change positive">
+                        <span>↗</span>
+                        <span>+8.2%</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -648,6 +669,10 @@ function Dashboard() {
                         {kpiData.loading ? '...' : kpiData.totalEnseignants}
                       </h3>
                       <p className="stat-label">Enseignants</p>
+                      <div className="stat-change positive">
+                        <span>↗</span>
+                        <span>+3.1%</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -658,6 +683,10 @@ function Dashboard() {
                         {kpiData.loading ? '...' : kpiData.totalClasses}
                       </h3>
                       <p className="stat-label">Classes</p>
+                      <div className="stat-change positive">
+                        <span>↗</span>
+                        <span>+12.5%</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -668,6 +697,10 @@ function Dashboard() {
                         {kpiData.loading ? '...' : kpiData.totalSalles}
                       </h3>
                       <p className="stat-label">Salles</p>
+                      <div className="stat-change positive">
+                        <span>↗</span>
+                        <span>+5.3%</span>
+                      </div>
                     </div>
                   </div>
                 </div>

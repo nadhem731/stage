@@ -688,37 +688,60 @@ def generate_planning_endpoint():
             if not any(e['id'] == ens['id'] for e in enseignants_disponibles):
                 enseignants_disponibles.append(ens)
     
-    # Enseignants fictifs si pas assez d'enseignants réels (avec disponibilités par défaut)
-    enseignants_fictifs = [
-        {"id": 1000, "nom": "Dupont", "prenom": "Jean", "matiere": "Mathématiques", "disponibilite": {}},
-        {"id": 1001, "nom": "Martin", "prenom": "Marie", "matiere": "Informatique", "disponibilite": {}},
-        {"id": 1002, "nom": "Bernard", "prenom": "Pierre", "matiere": "Physique", "disponibilite": {}},
-        {"id": 1003, "nom": "Durand", "prenom": "Sophie", "matiere": "Anglais", "disponibilite": {}},
-        {"id": 1004, "nom": "Moreau", "prenom": "Paul", "matiere": "Français", "disponibilite": {}}
-    ]
-    
-    # Compléter avec des enseignants fictifs si nécessaire
+    # Si pas assez d'enseignants réels, utiliser les enseignants existants en rotation
     if len(enseignants_disponibles) < 3:
-        for fictif in enseignants_fictifs:
-            enseignants_disponibles.append(fictif)
+        print(f"DEBUG: Seulement {len(enseignants_disponibles)} enseignants disponibles, utilisation en rotation")
+        # Dupliquer les enseignants existants pour avoir assez de variété
+        enseignants_originaux = enseignants_disponibles.copy()
+        while len(enseignants_disponibles) < 5 and enseignants_originaux:
+            for ens in enseignants_originaux:
+                if len(enseignants_disponibles) >= 5:
+                    break
+                # Créer une copie avec un identifiant unique pour éviter les conflits
+                ens_copie = ens.copy()
+                enseignants_disponibles.append(ens_copie)
     
     print(f"DEBUG: {len(enseignants_disponibles)} enseignants disponibles pour la génération")
+    for ens in enseignants_disponibles:
+        print(f"  - Teacher ID: {ens['id']}, Name: {ens.get('prenom', '')} {ens.get('nom', '')}, Subject: {ens.get('matiere', 'N/A')}")
     
-    # Générer exactement 2 cours par classe pour garantir que toutes les classes ont des cours
+    # Générer exactement 2 cours par classe en utilisant des enseignants différents
     for classe in processed_classes:
         classe_id = classe['id_classe']
         print(f"DEBUG: Génération de cours pour la classe {classe['nom_classe']} (ID: {classe_id})")
         
-        # Créer 2 cours par classe
+        # Mélanger les enseignants pour chaque classe pour éviter les patterns
+        enseignants_classe = enseignants_disponibles.copy()
+        random.shuffle(enseignants_classe)
+        
+        # Créer 2 cours par classe avec des enseignants différents
+        enseignants_utilises_classe = []
+        
         for i in range(2):
-            # Sélectionner un enseignant en rotation
-            enseignant = enseignants_disponibles[i % len(enseignants_disponibles)]
+            # Sélectionner un enseignant qui n'a pas encore de cours dans cette classe
+            enseignant = None
+            for ens in enseignants_classe:
+                if ens['id'] not in enseignants_utilises_classe:
+                    enseignant = ens
+                    break
+            
+            # Si tous les enseignants ont déjà un cours dans cette classe, prendre le suivant en rotation
+            if enseignant is None:
+                enseignant = enseignants_classe[i % len(enseignants_classe)]
             
             enseignant_id = enseignant['id']
             nom_complet = f"{enseignant['prenom']} {enseignant['nom']}".strip()
             matiere = enseignant['matiere']
             
-            print(f"DEBUG: Creating course {cours_id} for class {classe['nom_classe']} - {nom_complet} ({matiere})")
+            # Marquer cet enseignant comme utilisé pour cette classe
+            enseignants_utilises_classe.append(enseignant_id)
+            
+            print(f"DEBUG: Creating course {cours_id} for class {classe['nom_classe']} - Teacher ID: {enseignant_id}, Name: {nom_complet} ({matiere})")
+            
+            # Validation de l'ID enseignant
+            if not enseignant_id or not str(enseignant_id).isdigit():
+                print(f"WARNING: Invalid teacher ID {enseignant_id} for course {cours_id}")
+                continue
             
             cours_a_planifier.append({
                 "id_cours": cours_id,

@@ -34,6 +34,7 @@ function Planning() {
   const [soutenanceViewMode, setSoutenanceViewMode] = useState('day');
   const [groupedSoutenances, setGroupedSoutenances] = useState({});
   const [showStudentList, setShowStudentList] = useState(true);
+  const [preventSoutenanceReload, setPreventSoutenanceReload] = useState(false); // Pour empêcher le rechargement automatique
 
   const [showMicrosoftOptions, setShowMicrosoftOptions] = useState(false);
   const [microsoftOptions, setMicrosoftOptions] = useState({
@@ -127,7 +128,8 @@ function Planning() {
     const savedEtudiants = localStorage.getItem('etudiants');
     const savedSelectedEtudiants = localStorage.getItem('selectedEtudiants');
     
-    if (savedSoutenances) {
+    // Ne recharger les soutenances que si on n'est pas en train de les supprimer
+    if (savedSoutenances && !preventSoutenanceReload) {
       try {
         const soutenancesData = JSON.parse(savedSoutenances);
         setPlanningSoutenances(soutenancesData);
@@ -709,6 +711,31 @@ function Planning() {
       return;
     }
 
+    // Fonction pour supprimer complètement les anciens affichages
+    const clearAllSoutenanceData = () => {
+      setPreventSoutenanceReload(true); // Empêcher le rechargement automatique
+      setPlanningSoutenances([]);
+      setSoutenanceStats({});
+      setGroupedSoutenances({});
+      setShowSoutenanceModal(false);
+      
+      // Supprimer toutes les données liées aux soutenances du localStorage
+      localStorage.removeItem('planningSoutenances');
+      localStorage.removeItem('soutenanceStats');
+      localStorage.removeItem('groupedSoutenances');
+      
+      // Forcer le re-render en mettant à jour l'état
+      window.dispatchEvent(new Event('storage'));
+    };
+
+    // Supprimer complètement les anciens affichages de soutenances
+    console.log('Suppression des anciens plannings de soutenances...');
+    clearAllSoutenanceData();
+    setMessage('Suppression des anciens plannings de soutenances...');
+    
+    // Attendre que l'interface se mette à jour
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -730,6 +757,11 @@ function Planning() {
 
       if (response.ok) {
         const result = await response.json();
+        
+        // S'assurer que les anciens données sont bien supprimées avant d'ajouter les nouvelles
+        clearAllSoutenanceData();
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         setPlanningSoutenances(result.planning_soutenances || []);
         setSoutenanceStats(result.statistiques || {});
         
@@ -745,7 +777,8 @@ function Planning() {
         setGroupedSoutenances(grouped);
         
         localStorage.setItem('planningSoutenances', JSON.stringify(result.planning_soutenances || []));
-        setMessage(`Planning de soutenances généré: ${result.planning_soutenances?.length || 0} soutenances`);
+        setPreventSoutenanceReload(false); // Réactiver le rechargement pour les prochaines fois
+        setMessage(`Nouveau planning de soutenances généré: ${result.planning_soutenances?.length || 0} soutenances`);
       } else {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
