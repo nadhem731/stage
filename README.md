@@ -1,4 +1,4 @@
-# Projet ESP - Système de Planification et Réservation
+# Projet ESPRIT - Système de Planification et Réservation
 
 ## 📋 Description Générale
 
