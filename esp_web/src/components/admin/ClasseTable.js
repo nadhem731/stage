@@ -31,23 +31,36 @@ const ClasseTable = () => {
   const [selectedClasseDetails, setSelectedClasseDetails] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      if (forceRefresh) {
+        setLoading(true);
+      }
       setError(null);
-      const res = await axios.get('/api/classes');
+      const res = await axios.get('/api/classes', {
+        params: { 
+          _t: Date.now() // Cache busting timestamp
+        },
+        headers: { 
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       console.log('DEBUG: Classes récupérées:', res.data);
       setClasses(res.data);
     } catch (err) {
       console.error('Erreur lors du chargement des classes:', err);
       setError('Erreur lors du chargement des classes');
     } finally {
-      setLoading(false);
+      if (forceRefresh) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchClasses();
+    fetchClasses(true);
   }, []);
 
   useEffect(() => {
@@ -75,10 +88,16 @@ const ClasseTable = () => {
     }
     try {
       await axios.put(`/api/classes/${editId}`, editData);
-      setAutoSuccess('Classe modifiée avec succès !');
+      
+      // Réinitialiser le formulaire immédiatement
       setEditId(null);
       setEditData({ nomClasse: '' });
-      fetchClasses();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchClasses();
+        setAutoSuccess('Classe modifiée avec succès !');
+      }, 300);
     } catch (err) {
       setAutoError(err.response?.data?.message || err.message || 'Erreur lors de la modification');
     }
@@ -88,7 +107,12 @@ const ClasseTable = () => {
     if (!window.confirm('Voulez-vous vraiment supprimer cette classe ?')) return;
     try {
       await axios.delete(`/api/classes/${idClasse}`);
-      fetchClasses();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchClasses();
+      }, 300);
+      
     } catch (err) {
       alert('Erreur lors de la suppression');
     }
@@ -155,10 +179,15 @@ const ClasseTable = () => {
         );
       }
       await Promise.all(requests);
-      setAutoSuccess(`Classes générées : ${Array.from({length: autoCount}, (_,i) => `${autoBase}${i+1}`).join(', ')}`);
+      // Réinitialiser le formulaire immédiatement
       setAutoBase('');
       setAutoCount(1);
-      fetchClasses();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchClasses();
+        setAutoSuccess(`Classes générées : ${Array.from({length: autoCount}, (_,i) => `${autoBase}${i+1}`).join(', ')}`);
+      }, 500);
     } catch (err) {
       setAutoError('Erreur lors de la génération automatique.');
     }
@@ -238,6 +267,29 @@ const ClasseTable = () => {
               }}
             />
             <button
+              className="refresh-btn"
+              title="Actualiser la liste"
+              onClick={() => fetchClasses(true)}
+              style={{
+                background: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50%',
+                width: 40,
+                height: 40,
+                fontSize: 20,
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 8
+              }}
+            >
+              ↻
+            </button>
+            <button
               className="add-salle-btn"
               title={showAutoForm ? "Fermer le formulaire" : "Générer des classes"}
               onClick={() => setShowAutoForm((prev) => !prev)}
@@ -306,10 +358,88 @@ const ClasseTable = () => {
                     <td>{classe.nomClasse}</td>
                     <td>{classe.effectif || 0}</td>
                     <td className="actions-cell">
-                      <div className="action-buttons">
-                        <button className="btn-detail" onClick={() => handleDetailClick(classe)}>Détail</button>
-                        <button className="btn-edit" onClick={() => handleEditClick(classe)}>Modifier</button>
-                        <button className="btn-delete" onClick={() => handleDelete(classe.idClasse)}>Supprimer</button>
+                      <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn-detail" 
+                          onClick={() => handleDetailClick(classe)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            borderRadius: '6px',
+                            minWidth: '70px',
+                            height: '32px',
+                            background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 2px 8px rgba(0, 123, 255, 0.3)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = 'translateY(-2px)';
+                            e.target.style.boxShadow = '0 4px 16px rgba(0, 123, 255, 0.4)';
+                            e.target.style.background = 'linear-gradient(135deg, #0056b3 0%, #004085 100%)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 8px rgba(0, 123, 255, 0.3)';
+                            e.target.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)';
+                          }}
+                        >👁</button>
+                        <button 
+                          className="btn-edit" 
+                          onClick={() => handleEditClick(classe)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            borderRadius: '6px',
+                            minWidth: '70px',
+                            height: '32px',
+                            background: 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 2px 8px rgba(203, 9, 32, 0.3)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = 'translateY(-2px)';
+                            e.target.style.boxShadow = '0 4px 16px rgba(203, 9, 32, 0.4)';
+                            e.target.style.background = 'linear-gradient(135deg, #8B0000 0%, #660000 100%)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                            e.target.style.background = 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)';
+                          }}
+                        >✎</button>
+                        <button 
+                          className="btn-delete" 
+                          onClick={() => handleDelete(classe.idClasse)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            borderRadius: '6px',
+                            minWidth: '70px',
+                            height: '32px',
+                            background: 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 2px 8px rgba(52, 58, 64, 0.3)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.transform = 'translateY(-2px)';
+                            e.target.style.boxShadow = '0 4px 16px rgba(52, 58, 64, 0.4)';
+                            e.target.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 8px rgba(52, 58, 64, 0.3)';
+                            e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)';
+                          }}
+                        >✕</button>
                       </div>
                     </td>
                   </tr>

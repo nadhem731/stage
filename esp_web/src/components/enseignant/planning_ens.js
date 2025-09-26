@@ -25,6 +25,13 @@ const PlanningEnseignant = () => {
     const [currentWeekSoutenances, setCurrentWeekSoutenances] = useState(0);
     const [currentWeekRattrapages, setCurrentWeekRattrapages] = useState(0);
 
+    // État pour contrôler la visibilité des guides
+    const [showGuides, setShowGuides] = useState(() => {
+        // Récupérer la préférence depuis localStorage, par défaut true
+        const saved = localStorage.getItem('showPlanningGuides');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
     // Fonction pour gérer le clic sur un cours en ligne
     const handleCoursEnLigneClick = (cours) => {
         if (cours.modeCours === 'en_ligne') {
@@ -188,9 +195,27 @@ const PlanningEnseignant = () => {
                 setPlanningCours(data.cours);
             } else if (Array.isArray(data)) {
                 console.log('DEBUG: Données sous forme de tableau, longueur:', data.length);
-                // Filtrer pour exclure les rattrapages de l'onglet cours
-                const coursUniquement = data.filter(item => item.source !== 'rattrapage');
-                console.log('DEBUG: Cours filtrés:', coursUniquement.length);
+                // Filtrer pour exclure les rattrapages ET les cours qui ont été rattrapés
+                const coursUniquement = data.filter(item => {
+                    // 1. Exclure les cours marqués comme rattrapages (nouveaux créneaux de rattrapage)
+                    const estRattrapage = item.source === 'rattrapage' || 
+                                         item.type === 'rattrapage' || 
+                                         item.statut === 'rattrapage' ||
+                                         item.est_rattrapage === true;
+                    
+                    // 2. Exclure les cours originaux qui ont été rattrapés (approuvés)
+                    const coursId = item.id || item.idPlanning || item.planning_id;
+                    const aEteRattrape = coursRattrapes.has(coursId);
+                    
+                    const doitEtreExclu = estRattrapage || aEteRattrape;
+                    
+                    console.log(`DEBUG: Cours ${item.matiere} (ID: ${coursId}) - Est rattrapage: ${estRattrapage}, A été rattrapé: ${aEteRattrape}, Exclu: ${doitEtreExclu}`);
+                    
+                    return !doitEtreExclu;
+                });
+                
+                console.log('DEBUG: Cours filtrés (sans rattrapages ni cours rattrapés):', coursUniquement.length);
+                console.log('DEBUG: Cours exclus (rattrapages + cours rattrapés):', data.length - coursUniquement.length);
                 setPlanningCours(coursUniquement);
             } else {
                 console.log('DEBUG: Aucun cours trouvé, initialisation avec tableau vide');
@@ -205,6 +230,109 @@ const PlanningEnseignant = () => {
             setLoading(false);
         }
     }, []);
+
+    // État pour stocker les IDs des cours qui ont été rattrapés
+    const [coursRattrapes, setCoursRattrapes] = useState(() => {
+        // Initialiser depuis le localStorage au démarrage
+        try {
+            const cachedData = localStorage.getItem('coursRattrapes');
+            if (cachedData) {
+                const idsFromCache = new Set(JSON.parse(cachedData));
+                console.log('DEBUG: Cours rattrapés initialisés depuis le cache:', idsFromCache.size);
+                return idsFromCache;
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement du cache des cours rattrapés:', error);
+        }
+        return new Set();
+    });
+
+    // Fonction pour récupérer les cours qui ont été rattrapés (approuvés) avec cache localStorage
+    const fetchCoursRattrapes = useCallback(async (forceRefresh = false) => {
+        const storageKey = 'coursRattrapes';
+        const timestampKey = 'coursRattrapesTimestamp';
+        const cacheValidityMs = 5 * 60 * 1000; // 5 minutes
+        
+        try {
+            // Vérifier le cache localStorage d'abord
+            if (!forceRefresh) {
+                const cachedData = localStorage.getItem(storageKey);
+                const cachedTimestamp = localStorage.getItem(timestampKey);
+                
+                if (cachedData && cachedTimestamp) {
+                    const age = Date.now() - parseInt(cachedTimestamp);
+                    if (age < cacheValidityMs) {
+                        const idsFromCache = new Set(JSON.parse(cachedData));
+                        setCoursRattrapes(idsFromCache);
+                        console.log('DEBUG: Cours rattrapés chargés depuis le cache:', idsFromCache.size);
+                        return;
+                    }
+                }
+            }
+
+            // Si pas de cache valide, récupérer depuis l'API
+            const token = getAuthToken();
+            if (!token) return;
+
+            console.log('DEBUG: Récupération des cours rattrapés depuis l\'API...');
+            const response = await fetch('http://localhost:8080/api/rattrapages/enseignant', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const rattrapages = await response.json();
+                console.log('DEBUG: Rattrapages pour identifier cours rattrapés:', rattrapages);
+                
+                // Extraire les IDs des cours originaux qui ont été rattrapés (statut approuvé)
+                const idsCoursRattrapes = new Set();
+                
+                if (Array.isArray(rattrapages)) {
+                    rattrapages.forEach(rattrapage => {
+                        if (rattrapage.statut === 'approuve' && rattrapage.planning_id) {
+                            idsCoursRattrapes.add(rattrapage.planning_id);
+                            console.log(`DEBUG: Cours ${rattrapage.planning_id} marqué comme rattrapé`);
+                        }
+                    });
+                }
+                
+                // Sauvegarder dans le localStorage
+                localStorage.setItem(storageKey, JSON.stringify([...idsCoursRattrapes]));
+                localStorage.setItem(timestampKey, Date.now().toString());
+                
+                setCoursRattrapes(idsCoursRattrapes);
+                console.log('DEBUG: Total cours rattrapés (mis en cache):', idsCoursRattrapes.size);
+            }
+        } catch (error) {
+            console.error('Erreur lors de la récupération des cours rattrapés:', error);
+            
+            // En cas d'erreur, essayer de charger depuis le cache même expiré
+            const cachedData = localStorage.getItem(storageKey);
+            if (cachedData) {
+                const idsFromCache = new Set(JSON.parse(cachedData));
+                setCoursRattrapes(idsFromCache);
+                console.log('DEBUG: Cours rattrapés chargés depuis le cache expiré (fallback):', idsFromCache.size);
+            }
+        }
+    }, []);
+
+    // Fonction pour invalider le cache des cours rattrapés
+    const invaliderCacheCoursRattrapes = useCallback(() => {
+        localStorage.removeItem('coursRattrapes');
+        localStorage.removeItem('coursRattrapesTimestamp');
+        console.log('DEBUG: Cache des cours rattrapés invalidé');
+    }, []);
+
+    // Fonction pour basculer la visibilité des guides
+    const toggleGuides = useCallback(() => {
+        const newShowGuides = !showGuides;
+        setShowGuides(newShowGuides);
+        localStorage.setItem('showPlanningGuides', JSON.stringify(newShowGuides));
+        console.log('DEBUG: Guides', newShowGuides ? 'affichés' : 'masqués');
+    }, [showGuides]);
 
     // Récupération des rattrapages approuvés depuis la table Rattrapage
     const fetchPlanningRattrapages = useCallback(async () => {
@@ -318,11 +446,57 @@ const PlanningEnseignant = () => {
 
     // Chargement initial des données
     useEffect(() => {
-        fetchCurrentUser();
-        fetchPlanningCours();
-        fetchPlanningRattrapages();
-        fetchPlanningSoutenances();
-    }, [fetchCurrentUser, fetchPlanningCours, fetchPlanningRattrapages, fetchPlanningSoutenances]);
+        const loadAllData = async () => {
+            await fetchCurrentUser();
+            await fetchCoursRattrapes(); // Récupérer d'abord les cours rattrapés
+            await fetchPlanningCours(); // Puis filtrer les cours en conséquence
+            await fetchPlanningRattrapages();
+            await fetchPlanningSoutenances();
+        };
+        
+        loadAllData();
+    }, [fetchCurrentUser, fetchCoursRattrapes, fetchPlanningCours, fetchPlanningRattrapages, fetchPlanningSoutenances]);
+
+    // Fonction pour rafraîchir tous les plannings (utile après un déplacement vers rattrapage)
+    const rafraichirTousLesPlanning = useCallback(async (forceRefreshRattrapes = false) => {
+        console.log('DEBUG: Rafraîchissement de tous les plannings...');
+        if (forceRefreshRattrapes) {
+            invaliderCacheCoursRattrapes(); // Invalider le cache si demandé
+        }
+        await fetchCoursRattrapes(forceRefreshRattrapes); // Mettre à jour la liste des cours rattrapés
+        await fetchPlanningCours(); // Puis recharger les cours avec le nouveau filtre
+        await fetchPlanningRattrapages();
+        await fetchPlanningSoutenances();
+    }, [fetchCoursRattrapes, fetchPlanningCours, fetchPlanningRattrapages, fetchPlanningSoutenances, invaliderCacheCoursRattrapes]);
+
+    // Écouter les changements de localStorage pour les rattrapages
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'rattrapage_updated' || e.key === 'planning_updated') {
+                console.log('DEBUG: Détection de changement dans les rattrapages, rafraîchissement avec invalidation du cache...');
+                rafraichirTousLesPlanning(true); // Forcer le refresh du cache
+                // Nettoyer le flag
+                localStorage.removeItem('rattrapage_updated');
+                localStorage.removeItem('planning_updated');
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Vérifier aussi périodiquement (toutes les 30 secondes)
+        const interval = setInterval(() => {
+            if (localStorage.getItem('rattrapage_updated') === 'true') {
+                console.log('DEBUG: Flag rattrapage_updated détecté, rafraîchissement avec invalidation du cache...');
+                rafraichirTousLesPlanning(true); // Forcer le refresh du cache
+                localStorage.removeItem('rattrapage_updated');
+            }
+        }, 30000);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(interval);
+        };
+    }, [rafraichirTousLesPlanning]);
 
     // Fonction pour formater la date
     const formatDate = (dateString) => {
@@ -584,21 +758,36 @@ const PlanningEnseignant = () => {
                              activeTab === 'rattrapages' ? '🔄 Mes Rattrapages' : 
                              '🎓 Mes Soutenances'}
                         </h2>
-                        <button 
-                            className="back-to-dashboard-btn"
-                            onClick={() => {
-                                if (activeTab === 'cours') {
-                                    fetchPlanningCours();
-                                } else if (activeTab === 'rattrapages') {
-                                    fetchPlanningRattrapages();
-                                } else {
-                                    fetchPlanningSoutenances();
-                                }
-                            }}
-                            disabled={loading}
-                        >
-                            {loading ? '🔄 Chargement...' : '🔄 Actualiser'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <button 
+                                className="back-to-dashboard-btn"
+                                onClick={async () => {
+                                    if (activeTab === 'cours') {
+                                        await fetchCoursRattrapes(true); // Forcer le refresh du cache
+                                        await fetchPlanningCours(); // Puis recharger les cours
+                                    } else if (activeTab === 'rattrapages') {
+                                        await fetchPlanningRattrapages();
+                                    } else {
+                                        await fetchPlanningSoutenances();
+                                    }
+                                }}
+                                disabled={loading}
+                            >
+                                {loading ? '🔄 Chargement...' : '🔄 Actualiser'}
+                            </button>
+                            
+                            <button 
+                                className="back-to-dashboard-btn"
+                                onClick={toggleGuides}
+                                style={{
+                                    background: showGuides ? '#CB0920' : '#6c757d',
+                                    borderColor: showGuides ? '#CB0920' : '#6c757d'
+                                }}
+                                title={showGuides ? 'Masquer les guides' : 'Afficher les guides'}
+                            >
+                                {showGuides ? '👁️ Masquer guides' : '👁️‍🗨️ Afficher guides'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Affichage des erreurs */}
@@ -614,6 +803,7 @@ const PlanningEnseignant = () => {
                         {activeTab === 'rattrapages' && (
                         <div className="planning-container">
                                 {/* Guide pour les rattrapages */}
+                                {showGuides && (
                                 <div style={{
                                     background: 'linear-gradient(135deg,rgb(241, 128, 128),rgb(228, 51, 32))',
                                     borderRadius: '0.75rem',
@@ -646,6 +836,7 @@ const PlanningEnseignant = () => {
                                         </div>
                                     </div>
                                 </div>
+                                )}
                                 
                                 {planningRattrapages.length === 0 ? (
                                     <div className="access-denied">
@@ -845,6 +1036,7 @@ const PlanningEnseignant = () => {
                     {activeTab === 'cours' && (
                         <div className="planning-container">
                         {/* Guide pour les cours */}
+                        {showGuides && (
                         <div style={{
                             background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
                             borderRadius: '0.75rem',
@@ -877,6 +1069,7 @@ const PlanningEnseignant = () => {
                                 </div>
                             </div>
                         </div>
+                        )}
                         {Object.keys(groupedCours).length === 0 ? (
                             <div className="access-denied">
                                 <div className="access-denied-icon">📚</div>
@@ -1132,6 +1325,7 @@ const PlanningEnseignant = () => {
                         <div className="planning-container">
                                 
                                 {/* Guide pour les soutenances */}
+                                {showGuides && (
                                 <div style={{
                                     background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
                                     borderRadius: '0.75rem',
@@ -1164,6 +1358,7 @@ const PlanningEnseignant = () => {
                                         </div>
                                     </div>
                                 </div>
+                                )}
                                 {Object.keys(groupedSoutenances).length === 0 ? (
                                     <div className="access-denied">
                                         <div className="access-denied-icon">🎓</div>
@@ -1588,12 +1783,12 @@ const PlanningEnseignant = () => {
             )}
         </div>
 
-        <style jsx>{`
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `}</style>
+            <style jsx>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
         </>
     );
 };

@@ -46,9 +46,11 @@ const Enseignant = () => {
   const [availabilityError, setAvailabilityError] = useState(null);
   const [statusLoading, setStatusLoading] = useState({});
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      if (forceRefresh) {
+        setLoading(true);
+      }
       setError(null);
       const res = await axios.get('/api/users', { 
         params: { 
@@ -56,21 +58,29 @@ const Enseignant = () => {
           _t: Date.now() // Cache busting timestamp
         },
         // Forcer le rechargement en ajoutant un timestamp
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { 
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       });
       console.log('DEBUG: Enseignants récupérés:', res.data);
       setTeachers(res.data);
-      setPage(1); // Retourner à la première page après ajout
+      if (forceRefresh) {
+        setPage(1); // Retourner à la première page après ajout
+      }
     } catch (err) {
       console.error('Erreur lors du chargement des enseignants:', err);
       setError('Erreur lors du chargement des enseignants');
     } finally {
-      setLoading(false);
+      if (forceRefresh) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchTeachers();
+    fetchTeachers(true);
   }, []);
 
   const handleAddClick = () => {
@@ -92,18 +102,24 @@ const Enseignant = () => {
       return;
     }
     try {
-      await axios.post('/api/users', {
+      const response = await axios.post('/api/users', {
         ...formData,
         roleTypeRole: ROLES.ENSEIGNANT,
         password: formData.cin,
       });
       
-      // Forcer le rafraîchissement immédiat AVANT d'afficher le succès
-      await fetchTeachers();
+      console.log('Enseignant ajouté avec succès:', response.data);
       
-      setFormSuccess('Enseignant ajouté avec succès ! Un email avec les identifiants a été envoyé.');
-      setShowForm(false);
+      // Réinitialiser le formulaire immédiatement
       setFormData({ nom: '', prenom: '', email: '', tel: '', identifiant: '', cin: '', matiere: '' });
+      setShowForm(false);
+      
+      // Forcer le rafraîchissement avec un délai court pour s'assurer que le backend a traité
+      setTimeout(async () => {
+        await fetchTeachers();
+        setFormSuccess('Enseignant ajouté avec succès ! Un email avec les identifiants a été envoyé.');
+      }, 500);
+      
     } catch (err) {
       console.error('Erreur détaillée:', err.response?.data);
       if (err.code === 'ECONNABORTED') {
@@ -161,10 +177,17 @@ const Enseignant = () => {
         matiere: editData.matiere
       };
       await axios.put(`/api/users/${editId}`, payload);
-      setFormSuccess('Enseignant modifié avec succès !');
+      
+      // Réinitialiser le formulaire immédiatement
       setEditId(null);
       setEditData({ nom: '', prenom: '', email: '', tel: '', identifiant: '', cin: '', matiere: '' });
-      fetchTeachers();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchTeachers();
+        setFormSuccess('Enseignant modifié avec succès !');
+      }, 300);
+      
     } catch (err) {
       setFormError(err.response?.data?.message || 'Erreur lors de la modification');
     }
@@ -178,7 +201,12 @@ const Enseignant = () => {
       
       // L'interceptor axios ajoute déjà le token automatiquement
       await axios.delete(`/api/users/${idUser}`);
-      fetchTeachers();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchTeachers();
+      }, 300);
+      
     } catch (err) {
       console.error('Delete error:', err.response?.data || err.message);
       console.error('Full error response:', err.response);
@@ -190,11 +218,16 @@ const Enseignant = () => {
     setStatusLoading(prev => ({ ...prev, [idUser]: true }));
     try {
       await axios.put(`/api/users/${idUser}/status`, { statusCompte: newStatus });
-      fetchTeachers();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchTeachers();
+        setStatusLoading(prev => ({ ...prev, [idUser]: false }));
+      }, 300);
+      
     } catch (err) {
       console.error('Status change error:', err);
       alert('Erreur lors du changement de statut: ' + (err.response?.data?.message || err.message));
-    } finally {
       setStatusLoading(prev => ({ ...prev, [idUser]: false }));
     }
   };
@@ -324,6 +357,29 @@ const Enseignant = () => {
                       fontSize: 16
                     }}
                   />
+                  <button
+                    className="refresh-btn"
+                    title="Actualiser la liste"
+                    onClick={() => fetchTeachers(true)}
+                    style={{
+                      background: '#28a745',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 40,
+                      height: 40,
+                      fontSize: 20,
+                      fontWeight: 700,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 8
+                    }}
+                  >
+                    ↻
+                  </button>
                   <button
                     className="add-enseignant-btn"
                     title="Ajouter un enseignant"
@@ -510,18 +566,64 @@ const Enseignant = () => {
                           
                           <div className="user-card-buttons">
                             <button
-                              className="user-card-btn user-card-btn-edit"
+                              className="user-card-btn"
                               onClick={() => handleEditClick(enseignant)}
                               disabled={statusLoading[enseignant.idUser]}
+                              style={{
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                minWidth: '70px',
+                                height: '32px',
+                                background: 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 2px 8px rgba(203, 9, 32, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 16px rgba(203, 9, 32, 0.4)';
+                                e.target.style.background = 'linear-gradient(135deg, #8B0000 0%, #660000 100%)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                e.target.style.background = 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)';
+                              }}
                             >
-                              ✏️ Modifier
+                              ✎
                             </button>
                             <button
-                              className="user-card-btn user-card-btn-delete"
+                              className="user-card-btn"
                               onClick={() => handleDelete(enseignant.idUser)}
                               disabled={statusLoading[enseignant.idUser]}
+                              style={{
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                minWidth: '70px',
+                                height: '32px',
+                                background: 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 2px 8px rgba(52, 58, 64, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 16px rgba(52, 58, 64, 0.4)';
+                                e.target.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 8px rgba(52, 58, 64, 0.3)';
+                                e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)';
+                              }}
                             >
-                              🗑️ Supprimer
+                              ✕
                             </button>
                           </div>
                         </div>

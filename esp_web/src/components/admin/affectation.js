@@ -30,19 +30,31 @@ const Affectation = () => {
         classeId: '',
         dateAffectation: ''
     });
+    const [searchStudent, setSearchStudent] = useState('');
+    const [searchTeacher, setSearchTeacher] = useState('');
 
-    const fetchInitialData = async () => {
+    const fetchInitialData = async (forceRefresh = false) => {
         try {
-            setLoading(true);
+            if (forceRefresh) {
+                setLoading(true);
+            }
             setError(null);
 
             const token = localStorage.getItem('token');
             const config = {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                params: { 
+                    _t: Date.now() // Cache busting timestamp
+                }
             };
             
-            const studentParams = { params: { role: ROLES.ETUDIANT } };
-            const teacherParams = { params: { role: ROLES.ENSEIGNANT } };
+            const studentParams = { params: { role: ROLES.ETUDIANT, _t: Date.now() } };
+            const teacherParams = { params: { role: ROLES.ENSEIGNANT, _t: Date.now() } };
 
             const [studentsResponse, teachersResponse, classesResponse, affectationsResponse, teacherAffectationsResponse] = await Promise.all([
                 axios.get('/api/users', { ...config, ...studentParams }),
@@ -72,12 +84,14 @@ const Affectation = () => {
             setError('Erreur lors du chargement des données');
             console.error(err);
         } finally {
-            setLoading(false);
+            if (forceRefresh) {
+                setLoading(false);
+            }
         }
     };
 
     useEffect(() => {
-        fetchInitialData();
+        fetchInitialData(true);
     }, []);
 
     const handleChange = (selectedOption, actionMeta) => {
@@ -124,13 +138,18 @@ const Affectation = () => {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            alert(`Affectation ${activeTab === 'student' ? 'etudiant' : 'enseignant'} créée avec succès!`);
+            // Fermer le formulaire immédiatement
             if (activeTab === 'student') {
                 setShowStudentForm(false);
             } else {
                 setShowTeacherForm(false);
             }
-            fetchInitialData(); // Refresh data
+            
+            // Rafraîchir avec un délai court
+            setTimeout(async () => {
+                await fetchInitialData();
+                alert(`Affectation ${activeTab === 'student' ? 'etudiant' : 'enseignant'} créée avec succès!`);
+            }, 500);
         } catch (err) {
             setError(`Erreur lors de la création de l'affectation`);
             console.error(err);
@@ -159,7 +178,11 @@ const Affectation = () => {
                 await axios.delete(`/api/affectations/${id}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                fetchInitialData();
+                
+                // Rafraîchir avec un délai court
+                setTimeout(async () => {
+                    await fetchInitialData();
+                }, 300);
             } catch (err) {
                 setError('Erreur lors de la suppression de l\'affectation');
                 console.error(err);
@@ -168,6 +191,54 @@ const Affectation = () => {
     };
 
     const studentAffectations = affectations.filter(aff => aff.user && aff.user.role && aff.user.role.typeRole === ROLES.ETUDIANT);
+    
+    // Filtrage des affectations étudiants par recherche dynamique
+    const filteredStudentAffectations = React.useMemo(() => {
+        if (!searchStudent.trim()) return studentAffectations;
+        
+        const searchTerm = searchStudent.toLowerCase().trim();
+        return studentAffectations.filter(affectation => {
+            const fullName = `${affectation.user.nom} ${affectation.user.prenom}`.toLowerCase();
+            const className = affectation.classe.nomClasse.toLowerCase();
+            const email = affectation.user.email?.toLowerCase() || '';
+            
+            return fullName.includes(searchTerm) || 
+                   className.includes(searchTerm) || 
+                   email.includes(searchTerm) ||
+                   affectation.user.nom?.toLowerCase().includes(searchTerm) ||
+                   affectation.user.prenom?.toLowerCase().includes(searchTerm);
+        });
+    }, [studentAffectations, searchStudent]);
+    
+    // Filtrage des affectations enseignants par recherche dynamique
+    const filteredTeacherAffectationsByClass = React.useMemo(() => {
+        if (!searchTeacher.trim()) return teacherAffectationsByClass;
+        
+        const searchTerm = searchTeacher.toLowerCase().trim();
+        const filtered = {};
+        
+        Object.entries(teacherAffectationsByClass).forEach(([className, affectations]) => {
+            const filteredAffectations = affectations.filter(affectation => {
+                const fullName = `${affectation.user.nom} ${affectation.user.prenom}`.toLowerCase();
+                const email = affectation.user.email?.toLowerCase() || '';
+                const matiere = affectation.user.matiere?.toLowerCase() || '';
+                const classNameLower = className.toLowerCase();
+                
+                return fullName.includes(searchTerm) || 
+                       email.includes(searchTerm) || 
+                       matiere.includes(searchTerm) ||
+                       classNameLower.includes(searchTerm) ||
+                       affectation.user.nom?.toLowerCase().includes(searchTerm) ||
+                       affectation.user.prenom?.toLowerCase().includes(searchTerm);
+            });
+            
+            if (filteredAffectations.length > 0) {
+                filtered[className] = filteredAffectations;
+            }
+        });
+        
+        return filtered;
+    }, [teacherAffectationsByClass, searchTeacher]);
 
     if (loading) {
         return (
@@ -218,29 +289,100 @@ const Affectation = () => {
                             <div>
                                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
                                     <h2 className="section-title">Affectations Étudiants</h2>
-                                    <button
-                                        className="add-etudient-btn"
-                                        title="Ajouter une affectation"
-                                        onClick={() => handleAddClick('student')}
-                                        style={{
-                                            background: '#CB0920',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '50%',
-                                            width: 40,
-                                            height: 40,
-                                            fontSize: 28,
-                                            fontWeight: 700,
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginLeft: 12
-                                        }}
-                                    >
-                                        {showStudentForm ? '-' : '+'}
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="🔍 Rechercher étudiant ou classe..."
+                                                value={searchStudent}
+                                                onChange={e => setSearchStudent(e.target.value)}
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    borderRadius: 6,
+                                                    border: searchStudent ? '2px solid #CB0920' : '1px solid #ddd',
+                                                    width: 250,
+                                                    fontSize: 15,
+                                                    marginRight: 8,
+                                                    background: '#fafafa',
+                                                    transition: 'all 0.3s ease',
+                                                    boxShadow: searchStudent ? '0 2px 8px rgba(203, 9, 32, 0.2)' : '0 1px 4px rgba(0,0,0,0.04)',
+                                                    outline: 'none'
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.target.style.background = '#fff';
+                                                    e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.target.style.background = '#fafafa';
+                                                    e.target.style.boxShadow = searchStudent ? '0 2px 8px rgba(203, 9, 32, 0.2)' : '0 1px 4px rgba(0,0,0,0.04)';
+                                                }}
+                                            />
+                                            {searchStudent && (
+                                                <button
+                                                    onClick={() => setSearchStudent('')}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: '12px',
+                                                        top: '50%',
+                                                        transform: 'translateY(-50%)',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: '#666',
+                                                        fontSize: '16px',
+                                                        padding: '2px'
+                                                    }}
+                                                    title="Effacer la recherche"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button
+                                            className="refresh-btn"
+                                            title="Actualiser la liste"
+                                            onClick={() => fetchInitialData(true)}
+                                            style={{
+                                                background: '#28a745',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: 40,
+                                                height: 40,
+                                                fontSize: 20,
+                                                fontWeight: 700,
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            ↻
+                                        </button>
+                                        <button
+                                            className="add-etudient-btn"
+                                            title="Ajouter une affectation"
+                                            onClick={() => handleAddClick('student')}
+                                            style={{
+                                                background: '#CB0920',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: 40,
+                                                height: 40,
+                                                fontSize: 28,
+                                                fontWeight: 700,
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            {showStudentForm ? '-' : '+'}
+                                        </button>
+                                    </div>
                                 </div>
                                 {showStudentForm && (
                                     <form className="add-etudient-form" onSubmit={handleSubmit} style={{
@@ -297,6 +439,25 @@ const Affectation = () => {
                                         </button>
                                     </form>
                                 )}
+                                
+                                {/* Indicateur de résultats de recherche */}
+                                {searchStudent && (
+                                    <div style={{ 
+                                        marginBottom: '1rem', 
+                                        padding: '0.5rem 1rem', 
+                                        background: '#f8f9fa', 
+                                        borderRadius: '6px',
+                                        border: '1px solid #e9ecef',
+                                        fontSize: '0.9rem',
+                                        color: '#495057'
+                                    }}>
+                                        📊 <strong>{filteredStudentAffectations.length}</strong> résultat{filteredStudentAffectations.length !== 1 ? 's' : ''} trouvé{filteredStudentAffectations.length !== 1 ? 's' : ''} pour "<em>{searchStudent}</em>"
+                                        {filteredStudentAffectations.length !== studentAffectations.length && (
+                                            <span style={{ color: '#6c757d' }}> sur {studentAffectations.length} total</span>
+                                        )}
+                                    </div>
+                                )}
+                                
                                 <table className="table-dashboard affectations-table">
                                     <thead>
                                         <tr>
@@ -307,23 +468,76 @@ const Affectation = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {studentAffectations.map(affectation => (
-                                            <tr key={affectation.idAffectation}>
-                                                <td>{affectation.user.nom} {affectation.user.prenom}</td>
-                                                <td>{affectation.classe.nomClasse}</td>
-                                                <td>{affectation.dateAffectation}</td>
-                                                <td>
-                                                    <button
-                                                        style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
-                                                        onClick={() => handleEditClick(affectation)}
-                                                    >Modifier</button>
-                                                    <button
-                                                        style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
-                                                        onClick={() => handleDelete(affectation.idAffectation)}
-                                                    >Supprimer</button>
+                                        {filteredStudentAffectations.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                                                    {searchStudent ? 'Aucun résultat trouvé pour cette recherche' : 'Aucune affectation d\'étudiant trouvée'}
                                                 </td>
                                             </tr>
-                                        ))}
+                                        ) : (
+                                            filteredStudentAffectations.map(affectation => (
+                                                <tr key={affectation.idAffectation}>
+                                                    <td>{affectation.user.nom} {affectation.user.prenom}</td>
+                                                    <td>{affectation.classe.nomClasse}</td>
+                                                    <td>{affectation.dateAffectation}</td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            onClick={() => handleEditClick(affectation)}
+                                                            style={{
+                                                                padding: '0.4rem 0.8rem',
+                                                                fontSize: '0.8rem',
+                                                                borderRadius: '6px',
+                                                                minWidth: '70px',
+                                                                height: '32px',
+                                                                background: 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.3s ease',
+                                                                boxShadow: '0 2px 8px rgba(203, 9, 32, 0.3)'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.target.style.transform = 'translateY(-2px)';
+                                                                e.target.style.boxShadow = '0 4px 16px rgba(203, 9, 32, 0.4)';
+                                                                e.target.style.background = 'linear-gradient(135deg, #8B0000 0%, #660000 100%)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.target.style.transform = 'translateY(0)';
+                                                                e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                                                e.target.style.background = 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)';
+                                                            }}
+                                                        >✎</button>
+                                                        <button
+                                                            onClick={() => handleDelete(affectation.idAffectation)}
+                                                            style={{
+                                                                padding: '0.4rem 0.8rem',
+                                                                fontSize: '0.8rem',
+                                                                borderRadius: '6px',
+                                                                minWidth: '70px',
+                                                                height: '32px',
+                                                                background: 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.3s ease',
+                                                                boxShadow: '0 2px 8px rgba(52, 58, 64, 0.3)'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.target.style.transform = 'translateY(-2px)';
+                                                                e.target.style.boxShadow = '0 4px 16px rgba(52, 58, 64, 0.4)';
+                                                                e.target.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.target.style.transform = 'translateY(0)';
+                                                                e.target.style.boxShadow = '0 2px 8px rgba(52, 58, 64, 0.3)';
+                                                                e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)';
+                                                            }}
+                                                        >✕</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )))}
                                     </tbody>
                                 </table>
                             </div>
@@ -333,29 +547,100 @@ const Affectation = () => {
                             <div>
                                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
                                     <h2 className="section-title">Affectations Enseignants</h2>
-                                    <button
-                                        className="add-etudient-btn"
-                                        title="Ajouter une affectation"
-                                        onClick={() => handleAddClick('teacher')}
-                                        style={{
-                                            background: '#CB0920',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '50%',
-                                            width: 40,
-                                            height: 40,
-                                            fontSize: 28,
-                                            fontWeight: 700,
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginLeft: 12
-                                        }}
-                                    >
-                                        {showTeacherForm ? '-' : '+'}
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                type="text"
+                                                placeholder="🔍 Rechercher enseignant ou classe..."
+                                                value={searchTeacher}
+                                                onChange={e => setSearchTeacher(e.target.value)}
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    borderRadius: 6,
+                                                    border: searchTeacher ? '2px solid #CB0920' : '1px solid #ddd',
+                                                    width: 250,
+                                                    fontSize: 15,
+                                                    marginRight: 8,
+                                                    background: '#fafafa',
+                                                    transition: 'all 0.3s ease',
+                                                    boxShadow: searchTeacher ? '0 2px 8px rgba(203, 9, 32, 0.2)' : '0 1px 4px rgba(0,0,0,0.04)',
+                                                    outline: 'none'
+                                                }}
+                                                onFocus={(e) => {
+                                                    e.target.style.background = '#fff';
+                                                    e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.target.style.background = '#fafafa';
+                                                    e.target.style.boxShadow = searchTeacher ? '0 2px 8px rgba(203, 9, 32, 0.2)' : '0 1px 4px rgba(0,0,0,0.04)';
+                                                }}
+                                            />
+                                            {searchTeacher && (
+                                                <button
+                                                    onClick={() => setSearchTeacher('')}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: '12px',
+                                                        top: '50%',
+                                                        transform: 'translateY(-50%)',
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: '#666',
+                                                        fontSize: '16px',
+                                                        padding: '2px'
+                                                    }}
+                                                    title="Effacer la recherche"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button
+                                            className="refresh-btn"
+                                            title="Actualiser la liste"
+                                            onClick={() => fetchInitialData(true)}
+                                            style={{
+                                                background: '#28a745',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: 40,
+                                                height: 40,
+                                                fontSize: 20,
+                                                fontWeight: 700,
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            ↻
+                                        </button>
+                                        <button
+                                            className="add-etudient-btn"
+                                            title="Ajouter une affectation"
+                                            onClick={() => handleAddClick('teacher')}
+                                            style={{
+                                                background: '#CB0920',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '50%',
+                                                width: 40,
+                                                height: 40,
+                                                fontSize: 28,
+                                                fontWeight: 700,
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            {showTeacherForm ? '-' : '+'}
+                                        </button>
+                                    </div>
                                 </div>
                                 {showTeacherForm && (
                                     <form className="add-etudient-form" onSubmit={handleSubmit} style={{
@@ -412,10 +697,31 @@ const Affectation = () => {
                                         </button>
                                     </form>
                                 )}
-                                {Object.keys(teacherAffectationsByClass).length === 0 ? (
-                                    <p style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>Aucune affectation d'enseignant trouvée</p>
+                                
+                                {/* Indicateur de résultats de recherche pour enseignants */}
+                                {searchTeacher && (
+                                    <div style={{ 
+                                        marginBottom: '1rem', 
+                                        padding: '0.5rem 1rem', 
+                                        background: '#f8f9fa', 
+                                        borderRadius: '6px',
+                                        border: '1px solid #e9ecef',
+                                        fontSize: '0.9rem',
+                                        color: '#495057'
+                                    }}>
+                                        📊 <strong>{Object.keys(filteredTeacherAffectationsByClass).length}</strong> classe{Object.keys(filteredTeacherAffectationsByClass).length !== 1 ? 's' : ''} trouvée{Object.keys(filteredTeacherAffectationsByClass).length !== 1 ? 's' : ''} pour "<em>{searchTeacher}</em>"
+                                        {Object.keys(filteredTeacherAffectationsByClass).length !== Object.keys(teacherAffectationsByClass).length && (
+                                            <span style={{ color: '#6c757d' }}> sur {Object.keys(teacherAffectationsByClass).length} total</span>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {Object.keys(filteredTeacherAffectationsByClass).length === 0 ? (
+                                    <p style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>
+                                        {searchTeacher ? 'Aucun résultat trouvé pour cette recherche' : 'Aucune affectation d\'enseignant trouvée'}
+                                    </p>
                                 ) : (
-                                    Object.entries(teacherAffectationsByClass).map(([className, affectations]) => (
+                                    Object.entries(filteredTeacherAffectationsByClass).map(([className, affectations]) => (
                                         <div key={className} style={{ marginBottom: '2rem', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
                                             <div style={{ background: '#f8f9fa', padding: '1rem', borderBottom: '1px solid #e0e0e0' }}>
                                                 <h4 style={{ margin: 0, color: '#CB0920', fontSize: '1.1rem' }}>Classe: {className}</h4>
@@ -444,14 +750,60 @@ const Affectation = () => {
                                                             <td>{affectation.user.email}</td>
                                                             <td>{new Date(affectation.dateAffectation).toLocaleDateString('fr-FR')}</td>
                                                             <td>
-                                                                <button
-                                                                    style={{ background: '#eee', color: '#CB0920', border: 'none', borderRadius: 5, padding: '4px 10px', marginRight: 6, cursor: 'pointer', fontWeight: 600 }}
-                                                                    onClick={() => handleEditClick(affectation)}
-                                                                >Modifier</button>
-                                                                <button
-                                                                    style={{ background: '#CB0920', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
-                                                                    onClick={() => handleDelete(affectation.idAffectation)}
-                                                                >Supprimer</button>
+                                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                    <button
+                                                                        onClick={() => handleEditClick(affectation)}
+                                                                        style={{
+                                                                            padding: '0.4rem 0.8rem',
+                                                                            fontSize: '0.8rem',
+                                                                            borderRadius: '6px',
+                                                                            minWidth: '70px',
+                                                                            height: '32px',
+                                                                            background: 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.3s ease',
+                                                                            boxShadow: '0 2px 8px rgba(203, 9, 32, 0.3)'
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.target.style.transform = 'translateY(-2px)';
+                                                                            e.target.style.boxShadow = '0 4px 16px rgba(203, 9, 32, 0.4)';
+                                                                            e.target.style.background = 'linear-gradient(135deg, #8B0000 0%, #660000 100%)';
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.target.style.transform = 'translateY(0)';
+                                                                            e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                                                            e.target.style.background = 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)';
+                                                                        }}
+                                                                    >✎</button>
+                                                                    <button
+                                                                        onClick={() => handleDelete(affectation.idAffectation)}
+                                                                        style={{
+                                                                            padding: '0.4rem 0.8rem',
+                                                                            fontSize: '0.8rem',
+                                                                            borderRadius: '6px',
+                                                                            minWidth: '70px',
+                                                                            height: '32px',
+                                                                            background: 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.3s ease',
+                                                                            boxShadow: '0 2px 8px rgba(52, 58, 64, 0.3)'
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.target.style.transform = 'translateY(-2px)';
+                                                                            e.target.style.boxShadow = '0 4px 16px rgba(52, 58, 64, 0.4)';
+                                                                            e.target.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.target.style.transform = 'translateY(0)';
+                                                                            e.target.style.boxShadow = '0 2px 8px rgba(52, 58, 64, 0.3)';
+                                                                            e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)';
+                                                                        }}
+                                                                    >✕</button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}

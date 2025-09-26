@@ -1,15 +1,59 @@
-/* Palette principale - Design professionnel */
+/* SIDEBAR MODERNE ESPRIT - COHÉRENT AVEC LE DASHBOARD */
 :root {
-  --red-main: #CB0920;
-  --red-hover: #e53935;
-  --red-light: #ffebee;
-  --black-main: #111111;
-  --black-soft: #333333;
-  --white-main: #ffffff;
-  --white-soft: #f8f9fa;
-  --gray-light: #f5f5f5;
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
-  --sidebar-width: 260px;
+  /* Couleurs ESPRIT cohérentes */
+  --esprit-red: #CB0920;
+  --esprit-red-dark: #8B0000;
+  --esprit-red-light: #FFE8EA;
+  --esprit-red-lighter: #FFF5F6;
+  
+  /* Palette moderne */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-accent: var(--esprit-red-lighter);
+  
+  /* Texte */
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-white: #ffffff;
+  
+  /* Bordures et ombres */
+  --border-light: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-esprit: 0 4px 14px 0 rgba(203, 9, 32, 0.15);
+  --shadow-esprit-lg: 0 10px 25px -3px rgba(203, 9, 32, 0.2), 0 4px 6px -2px rgba(203, 9, 32, 0.1);
+  
+  /* Gradients */
+  --gradient-esprit: linear-gradient(135deg, var(--esprit-red) 0%, var(--esprit-red-dark) 100%);
+  --gradient-esprit-soft: linear-gradient(135deg, var(--esprit-red-light) 0%, var(--esprit-red-lighter) 100%);
+  
+  /* Transitions */
+  --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Layout */
+  --sidebar-width: 280px;
+  
+  /* Rayons */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  
+  /* Espacement */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
 }
 
 /* Animations avancées pour la sidebar */
@@ -76,35 +120,37 @@
 }
 
 .sidebar {
-  width: var(--sidebar-width, 260px);
-  background: var(--white-main);
-  box-shadow: var(--shadow);
+  width: var(--sidebar-width);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   height: 100vh;
-  border-right: none;
+  border-right: 2px solid var(--border-light);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   flex-shrink: 0;
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 99999;
-  animation: slideInLeft 0.6s ease-out;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  animation: slideInLeft 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
+  backdrop-filter: blur(20px);
 }
 
 
 
-/* Header institutionnel */
+/* Header moderne et élégant */
 .sidebar-header {
-  padding: 1.5rem;
-  background: var(--red-main);
-  color: var(--white-main);
+  padding: var(--space-8) var(--space-6);
+  background: var(--gradient-esprit);
+  color: var(--text-white);
   text-align: center;
-  border-bottom: 1px solid var(--red-hover);
-  animation: fadeInUp 0.8s ease-out 0.2s both;
+  border-bottom: 3px solid var(--esprit-red-dark);
+  animation: fadeInUp 1s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-esprit-lg);
 }
 
 

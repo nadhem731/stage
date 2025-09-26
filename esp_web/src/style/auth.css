@@ -6,7 +6,8 @@
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid #CB0920 !important;
   position: relative;
-  overflow: visible; /* Assure que le contenu ne soit pas coupé */
+  overflow: visible;
+  /* Assure que le contenu ne soit pas coupé */
   animation: pulse 2s infinite;
 }
 
@@ -15,7 +16,8 @@
   background-color: #CB0920 !important;
   border-color: #CB0920 !important;
   color: white !important;
-  width: 100%; /* Assure que le bouton prenne toute la largeur disponible */
+  width: 100%;
+  /* Assure que le bouton prenne toute la largeur disponible */
 }
 
 .btn.gradient-custom-2:hover {
@@ -64,18 +66,24 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 4px 15px rgba(203, 9, 32, 0.3);
   }
+
   50% {
     box-shadow: 0 8px 25px rgba(203, 9, 32, 0.5);
   }
 }
 
 @keyframes buttonGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 4px 15px rgba(203, 9, 32, 0.3);
   }
+
   50% {
     box-shadow: 0 8px 25px rgba(203, 9, 32, 0.6), 0 0 30px rgba(203, 9, 32, 0.3);
   }
@@ -87,14 +95,15 @@
 }
 
 .gradient-form {
-  background: url('https://i.pinimg.com/1200x/2e/ce/1d/2ece1d95982302ca92e83a2c505d5f94.jpg') no-repeat center center fixed;
+  background: url('https://i.pinimg.com/1200x/9e/11/15/9e111504d399ba6f6a90853f4b935b03.jpg') no-repeat center center fixed;
   background-size: cover;
   height: 100vh;
   width: 100vw;
   padding: 0;
   margin: 0;
   position: relative;
-  overflow: auto; /* Permet de scroller si nécessaire */
+  overflow: auto;
+  /* Permet de scroller si nécessaire */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,7 +125,8 @@
   width: 100vw !important;
   margin: 0 !important;
   padding: 0 !important;
-  overflow: auto !important; /* Remplace "hidden" pour éviter de couper le contenu */
+  overflow: auto !important;
+  /* Remplace "hidden" pour éviter de couper le contenu */
 }
 
 .alert {
@@ -125,7 +135,8 @@
   margin-bottom: 1.5rem;
   border: 2px solid transparent;
   font-weight: 500;
-  width: 100%; /* Assure que l'alerte s'affiche pleinement */
+  width: 100%;
+  /* Assure que l'alerte s'affiche pleinement */
 }
 
 .alert-danger {
@@ -149,9 +160,11 @@
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(15px);
   position: relative;
-  overflow: auto; /* Remplace "hidden" pour éviter de couper le contenu */
+  overflow: auto;
+  /* Remplace "hidden" pour éviter de couper le contenu */
   max-width: 90vw;
-  min-height: 650px; /* Hauteur minimale garantie */
+  min-height: 650px;
+  /* Hauteur minimale garantie */
   margin: auto;
 }
 
@@ -172,7 +185,8 @@
   border: 2px solid #BDBFC0;
   background: white;
   transition: all 0.3s ease;
-  width: 100%; /* Assure que le select s'affiche pleinement */
+  width: 100%;
+  /* Assure que le select s'affiche pleinement */
 }
 
 .form-select-lg:focus {
@@ -187,7 +201,8 @@
   padding: 1rem 1.25rem;
   background: white;
   transition: all 0.3s ease;
-  width: 100%; /* Assure que les inputs s'étendent correctement */
+  width: 100%;
+  /* Assure que les inputs s'étendent correctement */
 }
 
 .form-outline .form-control:focus {
@@ -200,11 +215,12 @@
   color: white;
   font-weight: 500;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  display: block; /* Assure que le label est toujours visible */
+  display: block;
+  /* Assure que le label est toujours visible */
 }
 
-.form-outline .form-control:focus ~ .form-label,
-.form-outline .form-control:not(:placeholder-shown) ~ .form-label {
+.form-outline .form-control:focus~.form-label,
+.form-outline .form-control:not(:placeholder-shown)~.form-label {
   color: #CB0920;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
@@ -231,11 +247,13 @@ p {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: auto; /* Remplace "hidden" pour permettre le défilement si nécessaire */
+  overflow: auto;
+  /* Remplace "hidden" pour permettre le défilement si nécessaire */
 }
 
 .shadow-5 {
@@ -243,34 +261,45 @@ html, body {
 }
 
 @keyframes cardFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 @media (max-width: 768px) {
   .gradient-form {
     padding: 0;
   }
-  
+
   .p-5 {
-    padding: 1rem !important; /* Réduit le padding pour les petits écrans */
+    padding: 1rem !important;
+    /* Réduit le padding pour les petits écrans */
   }
-  
+
   .shadow-5 {
     animation: none;
     max-width: 95vw;
-    min-height: 600px; /* Ajuste la hauteur minimale */
+    min-height: 600px;
+    /* Ajuste la hauteur minimale */
   }
 }
 
 @media (max-width: 576px) {
   .p-5 {
-    padding: 0.8rem !important; /* Réduit encore plus pour les très petits écrans */
+    padding: 0.8rem !important;
+    /* Réduit encore plus pour les très petits écrans */
   }
-  
+
   .shadow-5 {
     max-width: 98vw;
-    min-height: 550px; /* Ajuste pour éviter le débordement */
+    min-height: 550px;
+    /* Ajuste pour éviter le débordement */
   }
 }
 
@@ -289,7 +318,8 @@ html, body {
 .gradient-form input[type="password"],
 .gradient-form input[type="tel"] {
   margin-bottom: 0.5rem !important;
-  width: 100% !important; /* Assure que tous les champs s'étendent */
+  width: 100% !important;
+  /* Assure que tous les champs s'étendent */
 }
 
 .gradient-form .pt-1.mb-4 {
@@ -305,19 +335,334 @@ html, body {
 }
 
 @media (max-width: 700px) {
+
   .gradient-form .row,
   .gradient-form .MDBRow {
     flex-direction: column !important;
   }
+
   .gradient-form .col,
   .gradient-form .MDBCol {
     width: 100% !important;
     max-width: 100% !important;
     flex: 0 0 100% !important;
   }
+
   .gradient-form .card .p-5,
   .gradient-form .MDBCardBody {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
+  }
+}
+
+/* =
+==== SIGNUP MODERN STYLES ===== */
+
+/* Background et animations */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.signup-background {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 25%, #fff5f5 50%, #f0f8ff 75%, #fafafa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.signup-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(203, 9, 32, 0.03) 0%, rgba(255, 255, 255, 0.1) 100%);
+  pointer-events: none;
+}
+
+.signup-decoration {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(203, 9, 32, 0.05) 0%, rgba(255, 255, 255, 0.1) 30%, transparent 70%);
+  animation: rotate 30s linear infinite reverse;
+}
+
+.signup-decoration::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(135, 206, 250, 0.1) 0%, transparent 50%);
+  animation: rotate 20s linear infinite;
+}
+
+/* Carte principale */
+.signup-card-modern {
+  max-width: 500px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.08), 0 0 60px rgba(203, 9, 32, 0.05);
+  padding: 2.5rem 2rem;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  opacity: 0;
+  transform: translateY(40px) scale(0.98);
+  transition: all 0.7s cubic-bezier(.4, 0, .2, 1);
+}
+
+.signup-card-modern.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.signup-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #CB0920 0%, #ff6b6b 50%, #CB0920 100%);
+  border-radius: 24px 24px 0 0;
+}
+
+/* Titres */
+.signup-title {
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  font-size: 28px;
+  text-align: center;
+}
+
+.signup-subtitle {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 1.05rem;
+  margin-bottom: 24px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Layout du formulaire */
+.signup-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.input-group-modern {
+  margin-bottom: 20px;
+}
+
+/* Champs de saisie modernes */
+.form-control-modern {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  height: 52px;
+  font-size: 16px;
+  padding: 0 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  outline: none;
+  color: #334155;
+}
+
+.form-control-modern:focus {
+  border-color: #CB0920 !important;
+  box-shadow: 0 0 0 4px rgba(203, 9, 32, 0.08) !important;
+  background: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.form-control-modern:hover {
+  border-color: #CB0920 !important;
+  background: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.form-control-modern.disabled {
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  color: #94a3b8;
+}
+
+/* Checkbox moderne */
+.form-check-modern {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding: 18px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.form-check-modern:hover {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-color: #CB0920;
+  transform: translateY(-1px);
+}
+
+.form-check-input-modern {
+  margin-right: 12px;
+  margin-top: 2px;
+  width: 20px;
+  height: 20px;
+  accent-color: #CB0920;
+  cursor: pointer;
+}
+
+.form-check-label-modern {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.terms-link {
+  color: #CB0920;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.terms-link:hover {
+  text-decoration: underline;
+}
+
+/* Bouton moderne */
+.signup-modern-btn {
+  border-radius: 14px !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  padding: 18px 0 !important;
+  margin-top: 12px !important;
+  border: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  letter-spacing: 0.5px !important;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(135deg, #CB0920 0%, #e11d48 50%, #CB0920 100%) !important;
+  box-shadow: 0 6px 20px rgba(203, 9, 32, 0.25), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.signup-modern-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.signup-modern-btn:hover::before {
+  left: 100%;
+}
+
+.signup-modern-btn:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 12px 35px rgba(203, 9, 32, 0.35), 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.signup-modern-btn:active {
+  transform: translateY(-1px) scale(0.98) !important;
+  box-shadow: 0 6px 20px rgba(203, 9, 32, 0.25) !important;
+}
+
+/* Footer */
+.signup-footer {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 15px;
+  color: #64748b;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.signup-login-link {
+  color: #CB0920 !important;
+  text-decoration: none !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+}
+
+.signup-login-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 50%;
+  background: linear-gradient(90deg, #CB0920, #e11d48);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.signup-login-link:hover::after {
+  width: 100%;
+}
+
+.signup-login-link:hover {
+  color: #e11d48 !important;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .signup-card-modern {
+    padding: 1.5rem 1rem !important;
+    max-width: 95vw;
+  }
+
+  .signup-form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .signup-background {
+    padding: 0.5rem;
+  }
+
+  .signup-card-modern {
+    margin: 1rem;
   }
 }

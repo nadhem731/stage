@@ -5,7 +5,7 @@ import '../../style/table.css';
 import '../../style/disponibilite.css';
 import '../../style/dashboard.css';
 import { useAuth } from '../../hooks/useAuth';
-import Sidebar from '../Sidebar';
+import EnseignantLayout from './EnseignantLayout';
 
 const Disponibilite = () => {
     const { user, loading: authLoading } = useAuth();
@@ -40,7 +40,10 @@ const Disponibilite = () => {
                 setError(null);
                 
                 // Récupérer l'utilisateur connecté pour obtenir son ID
-                const userResponse = await axios.get('/api/users/me');
+                const userResponse = await axios.get('/api/users/me', {
+                    params: { _t: Date.now() },
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 const currentUser = userResponse.data;
                 
                 if (!currentUser || !currentUser.idUser) {
@@ -51,7 +54,10 @@ const Disponibilite = () => {
                 console.log('DEBUG - User ID récupéré:', currentUser.idUser);
                 
                 // Récupérer les disponibilités
-                const availabilityResponse = await axios.get(`/api/users/${currentUser.idUser}/disponibilite`);
+                const availabilityResponse = await axios.get(`/api/users/${currentUser.idUser}/disponibilite`, {
+                    params: { _t: Date.now() },
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 
                 if (availabilityResponse.data) {
                     console.log('DEBUG - Disponibilités récupérées:', availabilityResponse.data);
@@ -115,32 +121,51 @@ const Disponibilite = () => {
     // Afficher un message de chargement pendant l'authentification
     if (authLoading) {
         return (
-            <div className="dashboard-container">
-                <Sidebar />
-                <div className="dashboard-main">
-                    <div className="dashboard-content">
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <p>Chargement de l'authentification...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <EnseignantLayout 
+                loading={true} 
+                loadingMessage="Chargement de l'authentification..." 
+            />
         );
     }
 
     // Afficher un message d'erreur si pas d'utilisateur
     if (!user) {
         return (
-            <div className="dashboard-container">
-                <Sidebar />
-                <div className="dashboard-main">
-                    <div className="dashboard-content">
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <p style={{ color: 'red' }}>Utilisateur non authentifié</p>
-                        </div>
-                    </div>
+            <EnseignantLayout 
+                title="❌ Erreur d'authentification"
+                subtitle="Veuillez vous reconnecter pour accéder à cette page"
+            >
+                <div style={{ 
+                    textAlign: 'center', 
+                    padding: '3rem',
+                    background: '#ffebee',
+                    borderRadius: '12px',
+                    border: '1px solid #ffcdd2'
+                }}>
+                    <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔒</div>
+                    <h3 style={{ color: '#d32f2f', marginBottom: '1rem' }}>
+                        Accès non autorisé
+                    </h3>
+                    <p style={{ color: '#666', marginBottom: '2rem' }}>
+                        Vous devez être connecté en tant qu'enseignant pour accéder à cette page.
+                    </p>
+                    <button
+                        onClick={() => window.location.href = '/login'}
+                        style={{
+                            background: '#CB0920',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px 24px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            fontWeight: '600'
+                        }}
+                    >
+                        Se reconnecter
+                    </button>
                 </div>
-            </div>
+            </EnseignantLayout>
         );
     }
 
@@ -151,11 +176,14 @@ const Disponibilite = () => {
     ];
 
     return (
-        <div className="dashboard-container">
-            <Sidebar />
-            <div className="dashboard-main">
-                <div className="dashboard-content">
-                    <h2>Gérer mes disponibilités</h2>
+        <EnseignantLayout
+            title="📅 Gérer mes disponibilités"
+            subtitle="Définissez vos créneaux de disponibilité pour l'emploi du temps"
+            loading={loading}
+            loadingMessage="Chargement des disponibilités..."
+            showRefresh={true}
+            onRefresh={() => window.location.reload()}
+        >
                     
                     {error && (
                         <div style={{ 
@@ -170,11 +198,7 @@ const Disponibilite = () => {
                         </div>
                     )}
                     
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem' }}>
-                            <p>Chargement des disponibilités...</p>
-                        </div>
-                    ) : (
+                    {!loading && (
                         <form onSubmit={handleSubmit}>
                             <table className="table-dashboard">
                                 <thead>
@@ -234,9 +258,7 @@ const Disponibilite = () => {
                             </div>
                         </form>
                     )}
-                </div>
-            </div>
-        </div>
+        </EnseignantLayout>
     );
 };
 

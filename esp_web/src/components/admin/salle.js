@@ -35,18 +35,31 @@ const Salle = () => {
   const [search, setSearch] = useState('');
   const [typeSalles, setTypeSalles] = useState([]);
 
-  const fetchSalles = async () => {
+  const fetchSalles = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      if (forceRefresh) {
+        setLoading(true);
+      }
       setError(null);
-      const res = await axios.get('/api/salles');
+      const res = await axios.get('/api/salles', {
+        params: { 
+          _t: Date.now() // Cache busting timestamp
+        },
+        headers: { 
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       console.log('DEBUG: Salles récupérées:', res.data);
       setSalles(res.data);
     } catch (err) {
       console.error('Erreur lors du chargement des salles:', err);
       setError('Erreur lors du chargement des salles');
     } finally {
-      setLoading(false);
+      if (forceRefresh) {
+        setLoading(false);
+      }
     }
   };
 
@@ -70,7 +83,7 @@ const Salle = () => {
 
 
   useEffect(() => {
-    fetchSalles();
+    fetchSalles(true);
     fetchTypeSalles();
   }, []);
 
@@ -128,10 +141,16 @@ const Salle = () => {
           typeSalleId: formData.typeSalle.typeSalle
         };
         await axios.post('/api/salles/batch', batchData);
-        setFormSuccess('Salles ajoutées avec succès !');
-        setShowForm(false);
+        
+        // Réinitialiser le formulaire immédiatement
         setFormData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' }, blocName: '', numberOfRooms: '' });
-        fetchSalles();
+        setShowForm(false);
+        
+        // Rafraîchir avec un délai court
+        setTimeout(async () => {
+          await fetchSalles();
+          setFormSuccess('Salles ajoutées avec succès !');
+        }, 500);
       } catch (err) {
         setFormError(
           err.response?.data?.message ||
@@ -148,10 +167,16 @@ const Salle = () => {
       }
       try {
         await axios.post('/api/salles', formData);
-        setFormSuccess('Salle ajoutée avec succès !');
-        setShowForm(false);
+        
+        // Réinitialiser le formulaire immédiatement
         setFormData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' }, blocName: '', numberOfRooms: '' });
-        fetchSalles();
+        setShowForm(false);
+        
+        // Rafraîchir avec un délai court
+        setTimeout(async () => {
+          await fetchSalles();
+          setFormSuccess('Salle ajoutée avec succès !');
+        }, 500);
       } catch (err) {
         setFormError(
           err.response?.data?.message ||
@@ -198,10 +223,16 @@ const Salle = () => {
     }
     try {
       await axios.put(`/api/salles/${editId}`, editData);
-      setFormSuccess('Salle modifiée avec succès !');
+      
+      // Réinitialiser le formulaire immédiatement
       setEditId(null);
       setEditData({ numSalle: '', capacite: '', bloc: '', disponibilite: true, typeSalle: { typeSalle: '' } });
-      fetchSalles();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchSalles();
+        setFormSuccess('Salle modifiée avec succès !');
+      }, 300);
     } catch (err) {
       setFormError(
         err.response?.data?.message ||
@@ -216,7 +247,12 @@ const Salle = () => {
     if (!window.confirm('Voulez-vous vraiment supprimer cette salle ?')) return;
     try {
       await axios.delete(`/api/salles/${idSalle}`);
-      fetchSalles();
+      
+      // Rafraîchir avec un délai court
+      setTimeout(async () => {
+        await fetchSalles();
+      }, 300);
+      
     } catch (err) {
       alert('Erreur lors de la suppression');
     }
@@ -321,6 +357,29 @@ const Salle = () => {
                     fontSize: 16
                   }}
                 />
+                <button
+                  className="refresh-btn"
+                  title="Actualiser la liste"
+                  onClick={() => fetchSalles(true)}
+                  style={{
+                    background: '#28a745',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 40,
+                    height: 40,
+                    fontSize: 20,
+                    fontWeight: 700,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 8
+                  }}
+                >
+                  ↻
+                </button>
                 <button
                   className="add-salle-btn"
                   title="Ajouter une salle"
@@ -540,15 +599,61 @@ const Salle = () => {
                           </select>
                         </td>
                         <td className="actions-cell">
-                          <div className="action-buttons">
+                          <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
                               className="btn-edit"
                               onClick={() => handleEditClick(salle)}
-                            >Modifier</button>
+                              style={{
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                minWidth: '70px',
+                                height: '32px',
+                                background: 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 2px 8px rgba(203, 9, 32, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 16px rgba(203, 9, 32, 0.4)';
+                                e.target.style.background = 'linear-gradient(135deg, #8B0000 0%, #660000 100%)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 8px rgba(203, 9, 32, 0.3)';
+                                e.target.style.background = 'linear-gradient(135deg, #CB0920 0%, #8B0000 100%)';
+                              }}
+                            >✎</button>
                             <button
                               className="btn-delete"
                               onClick={() => handleDelete(salle.idSalle)}
-                            >Supprimer</button>
+                              style={{
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                minWidth: '70px',
+                                height: '32px',
+                                background: 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 2px 8px rgba(52, 58, 64, 0.3)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 16px rgba(52, 58, 64, 0.4)';
+                                e.target.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 8px rgba(52, 58, 64, 0.3)';
+                                e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #343a40 100%)';
+                              }}
+                            >✕</button>
                           </div>
                         </td>
                       </tr>

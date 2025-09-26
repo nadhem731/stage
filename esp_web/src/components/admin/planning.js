@@ -48,6 +48,9 @@ function Planning() {
 
   // Charger le planning sauvegardé au démarrage
   React.useEffect(() => {
+    // Synchroniser les soutenances du storage avec la base de données au démarrage
+    synchroniserSoutenancesAvecBD();
+    
     const savedPlanning = localStorage.getItem('currentPlanning');
     const savedStatus = localStorage.getItem('planningStatus');
     const savedSuggestions = localStorage.getItem('geminiSuggestions');
@@ -73,6 +76,14 @@ function Planning() {
     
     fetchPlanningStatus();
     fetchMicrosoftStatus();
+    
+    // Synchroniser les soutenances périodiquement
+    const intervalSync = setInterval(() => {
+      synchroniserSoutenancesAvecBD();
+    }, 300000); // Toutes les 5 minutes
+    
+    // Nettoyer l'intervalle au démontage du composant
+    return () => clearInterval(intervalSync);
     
     if (savedPlanning) {
       try {
@@ -132,6 +143,7 @@ function Planning() {
     if (savedSoutenances && !preventSoutenanceReload) {
       try {
         const soutenancesData = JSON.parse(savedSoutenances);
+        // Charger toutes les soutenances du storage (la synchronisation avec la BD se fait séparément)
         setPlanningSoutenances(soutenancesData);
         
         // Regrouper les soutenances par jour pour la vue dashboard
@@ -776,6 +788,7 @@ function Planning() {
         }, {});
         setGroupedSoutenances(grouped);
         
+        // Sauvegarder toutes les soutenances générées
         localStorage.setItem('planningSoutenances', JSON.stringify(result.planning_soutenances || []));
         setPreventSoutenanceReload(false); // Réactiver le rechargement pour les prochaines fois
         setMessage(`Nouveau planning de soutenances généré: ${result.planning_soutenances?.length || 0} soutenances`);
@@ -859,6 +872,56 @@ function Planning() {
       setMessage('Erreur lors de la validation du planning: ' + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fonction pour synchroniser les soutenances du storage avec la base de données
+  const synchroniserSoutenancesAvecBD = async () => {
+    const savedSoutenances = localStorage.getItem('planningSoutenances');
+    if (savedSoutenances) {
+      try {
+        const soutenancesData = JSON.parse(savedSoutenances);
+        
+        // Récupérer les soutenances existantes depuis la base de données
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const response = await api.get('/api/soutenances', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data) {
+          const soutenancesBD = response.data;
+          
+          // Créer un Set des IDs des soutenances existantes dans la BD
+          const idsSoutenancesBD = new Set(
+            soutenancesBD.map(s => s.id || s._id || `${s.jour}-${s.heureDebut}-${s.user?.id}`)
+          );
+          
+          // Filtrer les soutenances du storage pour ne garder que celles qui existent dans la BD
+          const soutenancesExistantes = soutenancesData.filter(soutenance => {
+            const soutenanceId = soutenance.id || soutenance._id || `${soutenance.jour}-${soutenance.heureDebut}-${soutenance.user?.id}`;
+            return idsSoutenancesBD.has(soutenanceId);
+          });
+          
+          // Mettre à jour le storage si des soutenances ont été supprimées
+          if (soutenancesExistantes.length !== soutenancesData.length) {
+            if (soutenancesExistantes.length > 0) {
+              localStorage.setItem('planningSoutenances', JSON.stringify(soutenancesExistantes));
+              setPlanningSoutenances(soutenancesExistantes);
+            } else {
+              localStorage.removeItem('planningSoutenances');
+              localStorage.removeItem('soutenanceStats');
+              localStorage.removeItem('groupedSoutenances');
+              setPlanningSoutenances([]);
+            }
+            console.log(`${soutenancesData.length - soutenancesExistantes.length} soutenances supprimées de la BD ont été retirées du storage`);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la synchronisation des soutenances:', error);
+        // En cas d'erreur API, on garde les soutenances du storage
+      }
     }
   };
 
